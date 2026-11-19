@@ -13,6 +13,7 @@ from pathlib import Path
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from config.i18n import tr
 
 CHUNK = 1 << 20
 MAX_PIECE = 32 << 20
@@ -76,23 +77,23 @@ class UploadPiece(APIView):
     def get(self, request, upload_id):
         path = self._file(request, upload_id)
         if path is None:
-            return Response({"detail": "Upload not found"}, status=404)
+            return Response({"detail": tr("Upload not found")}, status=404)
         return Response({"upload": upload_id, "size": path.stat().st_size})
 
     def put(self, request, upload_id):
         path = self._file(request, upload_id)
         if path is None:
-            return Response({"detail": "Upload not found; start over"}, status=404)
+            return Response({"detail": tr("Upload not found; start over")}, status=404)
         length = int(request.META.get("CONTENT_LENGTH") or 0)
         if not 0 < length <= MAX_PIECE:
-            return Response({"detail": "Invalid chunk size"}, status=400)
+            return Response({"detail": tr("Invalid chunk size")}, status=400)
         try:
             offset = int(request.query_params.get("offset", ""))
         except ValueError:
-            return Response({"detail": "offset is required"}, status=400)
+            return Response({"detail": tr("offset is required")}, status=400)
         size = path.stat().st_size
         if offset != size:
-            return Response({"detail": "Chunk offset does not match", "size": size}, status=409)
+            return Response({"detail": tr("Chunk offset does not match"), "size": size}, status=409)
         written = 0
         with path.open("r+b") as handle:
             handle.seek(offset)
@@ -104,5 +105,5 @@ class UploadPiece(APIView):
                 written += len(chunk)
             if written != length:
                 handle.truncate(offset)
-                return Response({"detail": "Chunk arrived incomplete", "size": offset}, status=400)
+                return Response({"detail": tr("Chunk arrived incomplete"), "size": offset}, status=400)
         return Response({"upload": upload_id, "size": offset + written})

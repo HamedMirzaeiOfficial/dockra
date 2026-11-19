@@ -1,5 +1,7 @@
 # Design system
 
+**English** · [فارسی](fa/design-system.md)
+
 The Dockra dashboard aims for a calm, premium developer-tool feel: dark first, an excellent light mode, a restrained indigo accent, dense but readable information, and no decoration that does not carry meaning.
 
 ## Brand
@@ -43,7 +45,7 @@ Elevation uses two shadows, also tokens: `shadow-card` (cards) and `shadow-pop` 
 
 ## Layout
 
-- **Sidebar** (desktop, 240 px): wordmark, organization, grouped navigation (Overview · Resources · Platform) with live counts, theme switch, user and sign-out. On screens below `lg` it becomes a drawer behind a top bar (Escape and backdrop close it).
+- **Sidebar** (desktop, 240 px): wordmark, organization, grouped navigation (Overview · Resources · Platform) with live counts, theme switch, language switch, user and sign-out. On screens below `lg` it becomes a drawer behind a top bar (Escape and backdrop close it).
 - **Detail pages** (application, database) add a second column with section navigation; on small screens it becomes a horizontal scroller. The active section is kept in the URL hash so links and reloads land on the same tab.
 - Content is capped at `max-w-6xl`.
 
@@ -76,6 +78,16 @@ Elevation uses two shadows, also tokens: `shadow-card` (cards) and `shadow-pop` 
 - Icons are `aria-hidden`; icon-only buttons carry `aria-label`.
 - Contrast: body text ≥ 7:1, secondary text ≥ 4.5:1 in both themes; status is never conveyed by color alone (badges carry a label).
 - `prefers-reduced-motion` disables entrance animations and replaces bouncing dots with a fade.
+
+## Languages and right-to-left
+
+The panel ships in English and Persian. `lib/i18n-script.ts` is an inline `<head>` script, like the theme script, that sets `<html lang dir>` from the saved choice or the browser language before first paint. `components/lang.tsx` holds `<LangGate>`, which renders the UI only once the language is known (so there is no hydration mismatch and no flash of English), and the `LangSwitch` in the sidebar and on the sign-in page.
+
+- Layout uses logical properties only (`ms-`/`me-`, `ps-`/`pe-`, `start-`/`end-`, `text-start`/`text-end`), so the whole UI mirrors in Persian.
+- Directional icons mirror with `rtl:` variants: back/forward chevrons, the switch thumb, the select arrow and the toast progress bar.
+- Technical content stays left-to-right inside a right-to-left page: code, hostnames, paths, env keys, logs, terminals and charts carry `dir="ltr"`.
+- Persian text uses **Vazirmatn** (self-hosted, OFL). It is listed after Inter in the font stack, so Latin text keeps Inter and Persian characters fall back to Vazirmatn per glyph.
+- Numbers use Persian digits and dates use the Solar Hijri calendar through `Intl` (`fa-IR`).
 
 ## Themes
 

@@ -10,6 +10,7 @@ from django.conf import settings
 from apps_core.models import App, CronJob, Disk
 from engine import blobs
 from engine.cron import split_cron
+from config.i18n import tr
 
 MANIFESTS = ("dockra.json", "liara.json")
 DEFAULT_PORTS = {"django": 8000, "node": 3000, "nextjs": 3000, "static": 80, "docker": 8000}
@@ -20,7 +21,7 @@ def _safe_extract(archive: tarfile.TarFile, dest: Path) -> None:
     for member in archive.getmembers():
         target = (root / member.name).resolve()
         if root != target and root not in target.parents:
-            raise RuntimeError("The archive contains a disallowed path")
+            raise RuntimeError(tr("The archive contains a disallowed path"))
     # The data filter rejects links pointing outside the folder and device files.
     archive.extractall(dest, filter="data")
 
@@ -121,7 +122,7 @@ def apply_manifest(app: App, manifest: dict) -> None:
                     disk.size_gb = int(size)
                 disk.save(update_fields=["mount_to", "size_gb"])
             except (DiskError, ValueError) as exc:
-                raise RuntimeError(f"Disk {name or '?'} in dockra.json/liara.json: {exc}") from exc
+                raise RuntimeError(tr("Disk {value} in dockra.json/liara.json: {exc}", value=name or '?', exc=exc)) from exc
     if "cron" in manifest:
         app.cron_jobs.all().delete()
         for line in manifest["cron"]:
@@ -197,7 +198,7 @@ def _python_version(manifest: dict, source: Path | None = None, requirements: st
     if raw:
         version = _minor(raw)
         if version not in PYTHON_VERSIONS:
-            raise RuntimeError(f"pythonVersion \"{raw}\" is not supported; use one of {', '.join(PYTHON_VERSIONS)}")
+            raise RuntimeError(tr("pythonVersion \"{raw}\" is not supported; use one of {value}", raw=raw, value=', '.join(PYTHON_VERSIONS)))
         return version
     for name in ("runtime.txt", ".python-version"):
         path = source / name if source else None
@@ -257,7 +258,7 @@ def ensure_dockerfile(source: Path | None, app: App, manifest: dict) -> None:
         return
     platform = _platform(app, manifest)
     if platform == "docker":
-        raise RuntimeError("The platform is docker but the project has no Dockerfile")
+        raise RuntimeError(tr("The platform is docker but the project has no Dockerfile"))
     ignore = source / ".dockerignore"
     if not ignore.exists():
         _write(

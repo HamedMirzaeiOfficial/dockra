@@ -1,5 +1,7 @@
 # Configuration
 
+**English** · [فارسی](fa/configuration.md)
+
 All settings are environment variables in `deploy/.env` (template: [`deploy/.env.example`](../deploy/.env.example)). Every value reaches the API, worker, builder and terminal containers. Re-run `deploy/install.sh` after changes.
 
 ## Addresses

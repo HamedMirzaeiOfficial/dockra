@@ -13,6 +13,7 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.core import signing
+from config.i18n import tr
 
 TICKET_SALT = "dockra-dbadmin-ticket"
 SESSION_SALT = "dockra-dbadmin-session"
@@ -186,7 +187,7 @@ def spec(database, base: str) -> dict:
                 "URL_PREFIX": path,
             },
         }
-    raise RuntimeError("No admin tool is defined for this engine")
+    raise RuntimeError(tr("No admin tool is defined for this engine"))
 
 
 def labels(database, base: str, tool: dict) -> list[str]:

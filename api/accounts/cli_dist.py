@@ -11,6 +11,7 @@ from pathlib import Path
 from django.conf import settings
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.views.decorators.http import require_GET
+from config.i18n import tr
 
 BINARIES = ("dockra-linux", "dockra-macos", "dockra-windows.exe")
 _VERSION_RE = re.compile(r'^__version__\s*=\s*"([^"]+)"', re.MULTILINE)
@@ -60,7 +61,7 @@ def cli_version_view(request):
 def cli_script(request):
     path = _script()
     if not path.is_file():
-        return JsonResponse({"detail": "The CLI file is not available on this server"}, status=404)
+        return JsonResponse({"detail": tr("The CLI file is not available on this server")}, status=404)
     response = FileResponse(path.open("rb"), content_type="text/x-python; charset=utf-8")
     response["X-Dockra-Sha256"] = _sha256(path)
     response["X-Dockra-Version"] = cli_version()
@@ -70,10 +71,10 @@ def cli_script(request):
 @require_GET
 def cli_binary(request, name):
     if name not in BINARIES:
-        return JsonResponse({"detail": "Unknown file"}, status=404)
+        return JsonResponse({"detail": tr("Unknown file")}, status=404)
     path = _bin_dir() / name
     if not path.is_file():
-        return JsonResponse({"detail": f"{name} has not been uploaded to this server"}, status=404)
+        return JsonResponse({"detail": tr("{name} has not been uploaded to this server", name=name)}, status=404)
     response = FileResponse(path.open("rb"), as_attachment=True, filename=name, content_type="application/octet-stream")
     response["X-Dockra-Sha256"] = _sha256(path)
     return response

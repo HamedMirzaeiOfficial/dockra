@@ -10,10 +10,11 @@ Follow [docs/development.md](docs/development.md). The fake driver lets you run 
 
 - `cd api && python manage.py test` passes and `python manage.py makemigrations --check --dry-run` reports nothing.
 - `ruff check api cli` passes.
-- `cd web && npx tsc --noEmit && npx next build` passes.
+- `cd web && npx tsc --noEmit && npm run i18n:check && npx next build` passes.
 - Behavior changes come with a test, especially anything touching authorization, the job queue, deployments, secrets or file paths.
 - UI changes use the design tokens and components described in [docs/design-system.md](docs/design-system.md); attach a screenshot in both themes.
-- Docs are updated when an API contract, a setting or a CLI command changes.
+- New user-facing text is translated: `t("…")` in the panel and `tr("…")` in the API, with a Persian entry in `web/lib/locales/fa/` or `api/config/locale/fa.json` ([how](docs/development.md#translations-english-and-persian)). Use logical Tailwind classes (`ms-`, `pe-`, `start-`) so the layout mirrors in Persian.
+- Docs are updated when an API contract, a setting or a CLI command changes; the Persian copies in `docs/fa/` too when you can (otherwise say so in the pull request).
 
 ## Guidelines
 

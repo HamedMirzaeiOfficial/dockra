@@ -2,6 +2,8 @@
 
 <h1 align="center">Dockra</h1>
 
+<p align="center"><b>English</b> · <a href="README.fa.md">فارسی</a></p>
+
 <p align="center"><b>From code to cloud.</b><br/>A self-hosted application deployment platform: push a folder or a Git branch, get a running app with a domain, HTTPS, databases, backups, logs and alerts — on a server you own.</p>
 
 <p align="center">
@@ -37,6 +39,7 @@ Everything listed here is implemented and covered by the test suite or the end-t
 | **Operations** | Live and archived logs with search, an interactive terminal (`docker exec` over WebSocket), a one-shot console, cron jobs, env vars encrypted at rest, resource plans with CPU burst and capacity admission control. |
 | **Observability** | Per-minute CPU, memory, network, requests, 5xx rate and p95 latency (from Traefik's own metrics); alerts for crash loops, high usage, unreachable apps, host pressure and silent platform services, delivered to Telegram or any webhook. |
 | **Access** | Organizations with owner / admin / developer / viewer roles, TOTP two-factor auth, login throttling, expiring API tokens, browser-based CLI login, audit log. |
+| **Languages** | The dashboard, the API messages and the CLI sign-in pages speak English and Persian, with a full right-to-left layout, Persian digits and the Solar Hijri calendar. The language follows the browser until you pick one; a CI check fails when a string has no translation. |
 | **Restricted networks** | Package and registry mirrors, image pre-pulling (`deploy/offline.sh`), bring-your-own certificates — the platform keeps working without public internet. |
 
 ## Screenshots
@@ -196,10 +199,10 @@ Read [security](docs/security.md) for the full threat model and the honest list 
 
 | Suite | Command | What it covers |
 | --- | --- | --- |
-| API unit and integration | `cd api && python manage.py test` | 168 tests: deployment lifecycle, cancel and rollback, failed-build recovery, concurrent job claiming, stale-worker recovery, RBAC and tenant isolation, secrets at rest, capacity admission, disk rules, backups and restore, imports, webhooks, SSRF guards, CLI login flow |
+| API unit and integration | `cd api && python manage.py test` | 179 tests: deployment lifecycle, cancel and rollback, failed-build recovery, concurrent job claiming, stale-worker recovery, RBAC and tenant isolation, secrets at rest, capacity admission, disk rules, backups and restore, imports, webhooks, SSRF guards, CLI login flow, response language |
 | Migrations | `python manage.py makemigrations --check --dry-run` | models and migrations are in sync |
 | Lint | `ruff check api cli` | Python errors and unused code |
-| Dashboard | `cd web && npx tsc --noEmit && npx next build` | type safety and production build |
+| Dashboard | `cd web && npx tsc --noEmit && npm run i18n:check && npx next build` | type safety, translation coverage and production build |
 | UI smoke | `node web/e2e/screenshots.cjs` | signs in and renders every screen in both themes, fails on console errors |
 | End to end | `deploy/e2e.sh` | real Docker: install, deploy, zero-downtime redeploy, rollback, database, backup, isolated network |
 

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Terminal as XTerm } from "@xterm/xterm";
 import { Button } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { t } from "@/lib/i18n";
 
 type State = "connecting" | "open" | "closed" | "exit" | "error";
 
@@ -57,7 +58,7 @@ export function Terminal({ slug, onFallback }: { slug: string; onFallback?: () =
       } catch (err) {
         if (disposed) return;
         setUnavailable(err instanceof ApiError && err.status === 503);
-        setDetail(err instanceof Error ? err.message : "Error");
+        setDetail(err instanceof Error ? err.message : t("Error"));
         setState("error");
         return;
       }
@@ -95,7 +96,7 @@ export function Terminal({ slug, onFallback }: { slug: string; onFallback?: () =
           setCode(typeof msg.code === "number" ? msg.code : null);
           setState("exit");
         } else if (msg?.type === "error") {
-          setDetail(msg.detail || "Terminal error");
+          setDetail(msg.detail || t("Terminal error"));
           setState("error");
         }
       };
@@ -118,11 +119,11 @@ export function Terminal({ slug, onFallback }: { slug: string; onFallback?: () =
   }, [slug, session]);
 
   const label =
-    state === "connecting" ? "Connecting…"
-      : state === "open" ? "Connected"
-        : state === "exit" ? `Session ended${code !== null ? ` (exit ${code})` : ""}`
-          : state === "error" ? "Error"
-            : "Disconnected";
+    state === "connecting" ? t("Connecting…")
+      : state === "open" ? t("Connected")
+        : state === "exit" ? (code !== null ? t("Session ended (exit {code})", { code }) : t("Session ended"))
+          : state === "error" ? t("Error")
+            : t("Disconnected");
   const dot = state === "open" ? "bg-accent" : state === "connecting" ? "animate-pulse bg-warning" : "bg-danger";
 
   return (
@@ -132,23 +133,23 @@ export function Terminal({ slug, onFallback }: { slug: string; onFallback?: () =
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-danger" />
           <span className="min-w-0 flex-1">
             {detail}
-            {unavailable && <span className="block text-xs text-danger/80">The terminal service is not running; use the Console tab for now.</span>}
+            {unavailable && <span className="block text-xs text-danger/80">{t("The terminal service is not running; use the Console tab for now.")}</span>}
           </span>
-          {unavailable && onFallback && <Button type="button" tone="ghost" size="sm" icon="terminal" onClick={onFallback}>Open console</Button>}
+          {unavailable && onFallback && <Button type="button" tone="ghost" size="sm" icon="terminal" onClick={onFallback}>{t("Open console")}</Button>}
         </div>
       )}
-      <div className="overflow-hidden rounded-xl border border-line bg-field">
+      <div dir="ltr" className="overflow-hidden rounded-xl border border-line bg-field">
         <div className="flex items-center justify-between border-b border-line/70 px-4 py-2.5">
           <span className="inline-flex items-center gap-2 text-xs text-muted">
             <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
             {label}
           </span>
           {(state === "closed" || state === "exit" || state === "error") && (
-            <Button type="button" tone="ghost" size="sm" icon="restart" onClick={() => setSession((n) => n + 1)}>Reconnect</Button>
+            <Button type="button" tone="ghost" size="sm" icon="restart" onClick={() => setSession((n) => n + 1)}>{t("Reconnect")}</Button>
           )}
         </div>
         <div className="h-[32rem] p-3">
-          <div ref={host} className="h-full w-full text-left" />
+          <div ref={host} className="h-full w-full text-start" />
         </div>
       </div>
     </div>

@@ -1,3 +1,5 @@
+from config.i18n import tr
+
 def user_payload(user, membership):
     full = (user.get_full_name() or user.username).strip()
     parts = full.split()
@@ -11,7 +13,7 @@ def user_payload(user, membership):
         "name": full,
         "initials": initials,
         "role": membership.role,
-        "role_label": membership.get_role_display(),
+        "role_label": tr(membership.get_role_display()),
         "organization": {
             "name": membership.organization.name,
             "slug": membership.organization.slug,

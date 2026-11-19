@@ -29,7 +29,7 @@ module.exports = {
         info: token("info"),
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        sans: ["var(--font-sans)", "var(--font-fa)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
         mono: ["ui-monospace", "SF Mono", "JetBrains Mono", "Cascadia Code", "Menlo", "Consolas", "monospace"],
       },
       borderRadius: {

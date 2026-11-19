@@ -1,5 +1,7 @@
 # The `dockra` CLI
 
+**English** · [فارسی](fa/cli.md)
+
 A single Python file (`cli/dockra.py`) using only the standard library. Install it from your own server — no PyPI, npm or GitHub access needed:
 
 ```bash

@@ -1,5 +1,7 @@
 # REST API reference
 
+**English** · [فارسی](fa/api.md)
+
 Base URL: `API_PUBLIC_URL` (e.g. `https://api.example.com`). Paths work with and without a trailing slash.
 
 ## Conventions
@@ -7,6 +9,7 @@ Base URL: `API_PUBLIC_URL` (e.g. `https://api.example.com`). Paths work with and
 - **Authentication:** `Authorization: Bearer <token>`, either a sign-in JWT (`access`, 12 hours) or an API token (`dockra_…`). JWTs are revoked immediately on logout, password change, admin reset or deactivation; API tokens on deactivation or admin reset.
 - **Organization:** users with several memberships may send `X-Organization: <slug>`; otherwise the first membership is used.
 - **Roles:** reads (GET) for every member; writes need developer unless marked *admin* ([roles](security.md#roles)).
+- **Language:** `Accept-Language: fa` returns error messages (`detail`) and labels (`status_label`, `kind_label`, …) in Persian; English otherwise. Machine values (`status`, `kind`, keys) are never translated.
 - **Errors:** `{"detail": "…"}` with 400, 401, 403, 404, 409, 413, 429 or 502.
 - **Queued work** (deploy, start/stop, backups, …): `202` means queued, `200` means done inline (local fake driver). Follow progress on the resource (e.g. `deployments`). An immediate failure returns `400` with `detail`.
 - **Times:** ISO 8601.

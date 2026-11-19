@@ -27,6 +27,7 @@ from engine.source import (
     read_manifest,
     release_command,
 )
+from config.i18n import tr
 
 
 def _touch_log(deployment: Deployment, line: str) -> None:
@@ -411,7 +412,7 @@ def _safety_backup(database: Database, step) -> Backup:
         dest.unlink(missing_ok=True)
         backup.status, backup.error, backup.finished_at = Backup.Status.FAILED, str(exc)[-2000:], timezone.now()
         backup.save(update_fields=["status", "error", "finished_at"])
-        raise RuntimeError(f"The safety backup failed; the database was not touched\n{exc}") from exc
+        raise RuntimeError(tr("The safety backup failed; the database was not touched\n{exc}", exc=exc)) from exc
     backup.status, backup.size_bytes, backup.path, backup.finished_at = Backup.Status.READY, size, str(dest), timezone.now()
     backup.save(update_fields=["status", "size_bytes", "path", "finished_at"])
     step(f"Safety backup {backup.id} is ready")
@@ -456,7 +457,7 @@ def _restore_and_report(database: Database, path: Path, step) -> dict:
     summary = driver.db_summary(database)
     if errors and summary.get("unit") == "tables" and not summary.get("tables"):
         # psql without ON_ERROR_STOP returns zero even for an incompatible file; an empty database must not be reported as success.
-        raise RuntimeError(f"No tables were restored and {len(errors)} errors occurred; the backup file is not compatible with this database\n{errors[0][:300]}")
+        raise RuntimeError(tr("No tables were restored and {count} errors occurred; the backup file is not compatible with this database\n{value}", count=len(errors), value=errors[0][:300]))
     if summary:
         if summary["tables"]:
             step(f"Check: {summary['tables']} {summary['unit']}, about {summary['rows']} rows")
@@ -485,11 +486,11 @@ def _import_db(job: Job) -> None:
         step(f"File format: {info['format']} ({info['engine']})")
         if payload.get("engine") and payload["engine"] != info["engine"]:
             if {payload["engine"], info["engine"]} != {"mysql", "mariadb"}:
-                raise RuntimeError(f"The backup file is {info['engine']}, not {payload['engine']}")
+                raise RuntimeError(tr("The backup file is {value}, not {value2}", value=info['engine'], value2=payload['engine']))
         engine = payload.get("engine") or info["engine"]
         version = payload.get("version") or info["version"]
         if dumps.needs_newer(engine, version, info["version"]):
-            raise RuntimeError(f"This backup needs version {info['version']} or later; pass a higher --version or leave it empty")
+            raise RuntimeError(tr("This backup needs version {value} or later; pass a higher --version or leave it empty", value=info['version']))
         if database.engine != engine or database.version != version:
             database.engine, database.version = engine, version
             database.save(update_fields=["engine", "version"])
@@ -534,7 +535,7 @@ def _disk_import(job: Job) -> None:
                 safety.status = DiskBackup.Status.FAILED
                 safety.error = str(exc)[-2000:]
                 safety.save(update_fields=["status", "error"])
-                raise RuntimeError(f"The pre-replace backup failed; the disk was not touched\n{exc}") from exc
+                raise RuntimeError(tr("The pre-replace backup failed; the disk was not touched\n{exc}", exc=exc)) from exc
             disk_import.clear(root)
             step("Disk emptied")
         if payload.get("ftp"):
@@ -674,7 +675,7 @@ def _db_admin(job: Job) -> None:
 
     database = Database.objects.get(pk=job.payload["database_id"])
     if database.status != Database.Status.RUNNING:
-        raise RuntimeError("The database is not running")
+        raise RuntimeError(tr("The database is not running"))
     get_driver().start_db_admin(database, job.payload["base"])
     _audit(job, "database admin opened", database.name, tool_name(database))
 
@@ -793,7 +794,7 @@ def _execute(job_id: int) -> None:
     handler = HANDLERS.get(job.kind)
     try:
         if handler is None:
-            raise RuntimeError("Unknown job kind")
+            raise RuntimeError(tr("Unknown job kind"))
         with _Heartbeat(job.pk):
             handler(job)
     except BuildCanceled:
@@ -1051,7 +1052,7 @@ def run_rpc(kind: str, payload: dict, user, organization, timeout: float) -> dic
     while job.status in (Job.Status.QUEUED, Job.Status.RUNNING):
         if time.monotonic() > deadline:
             Job.objects.filter(pk=job.pk, status=Job.Status.QUEUED).delete()
-            raise RuntimeError("The terminal service did not respond; check its status")
+            raise RuntimeError(tr("The terminal service did not respond; check its status"))
         time.sleep(0.2)
         job.refresh_from_db()
     try:

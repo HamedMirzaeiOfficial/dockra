@@ -51,6 +51,9 @@ jobs:
         working-directory: web
       - run: npx tsc --noEmit
         working-directory: web
+      # Every panel string must have a Persian entry (lib/locales/fa).
+      - run: npm run i18n:check
+        working-directory: web
       - run: npx next build
         working-directory: web
         env:

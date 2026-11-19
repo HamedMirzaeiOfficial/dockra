@@ -36,6 +36,7 @@ from engine.runner import services_status
 from engine.source import DEFAULT_PORTS
 from engine.models import Job
 from engine.resources import QuotaExceeded, app_demand, ensure_capacity, parse_cpu, parse_range, snapshot
+from config.i18n import tr
 
 def default_hostname(slug: str) -> str:
     if settings.DOCKRA_APPS_DOMAIN:
@@ -73,7 +74,7 @@ def _sync_running(request, app):
     if job is not None and job.status == Job.Status.FAILED:
         lines = (job.log or "").strip().splitlines()
         reason = lines[-1] if lines else "unknown error"
-        return Response({"detail": f"Saved, but could not be applied to the container: {reason}"}, status=502)
+        return Response({"detail": tr("Saved, but could not be applied to the container: {reason}", reason=reason)}, status=502)
     return None
 
 
@@ -142,13 +143,13 @@ class AppListCreate(APIView):
         slug = (data.get("slug") or "").strip().lower()
         platform = data.get("platform") or App.Platform.DJANGO
         if not name:
-            return Response({"detail": "Name is required"}, status=400)
+            return Response({"detail": tr("Name is required")}, status=400)
         if not SLUG_RE.match(slug):
-            return Response({"detail": "The ID may only contain lowercase letters, digits and dashes"}, status=400)
+            return Response({"detail": tr("The ID may only contain lowercase letters, digits and dashes")}, status=400)
         if platform not in App.Platform.values:
-            return Response({"detail": "Unsupported platform: django, node, nextjs, static or docker"}, status=400)
+            return Response({"detail": tr("Unsupported platform: django, node, nextjs, static or docker")}, status=400)
         if App.objects.filter(slug=slug).exists():
-            return Response({"detail": "This ID is already taken"}, status=400)
+            return Response({"detail": tr("This ID is already taken")}, status=400)
         region = App.Region.LOCAL
         port = DEFAULT_PORTS.get(platform, 8000)
         try:
@@ -217,7 +218,7 @@ class AppDetail(APIView):
             app.health_path = health if not health or health.startswith("/") else "/" + health
         if data.get("platform"):
             if data["platform"] not in App.Platform.values:
-                return Response({"detail": "Unsupported platform"}, status=400)
+                return Response({"detail": tr("Unsupported platform")}, status=400)
             app.platform = data["platform"]
         if "name" in data and data.get("name"):
             app.name = data["name"].strip()
@@ -231,7 +232,7 @@ class AppDetail(APIView):
 
     def delete(self, request, slug):
         if request.membership.role not in (Membership.Role.OWNER, Membership.Role.ADMIN):
-            return Response({"detail": "Only an admin can delete an app"}, status=403)
+            return Response({"detail": tr("Only an admin can delete an app")}, status=403)
         app = _app(request, slug)
         job = enqueue(Job.Kind.REMOVE_APP, {"app_id": app.id}, request.user, app.organization)
         failed = _failed(job)
@@ -255,7 +256,7 @@ class DeployView(APIView):
                 return Response({"detail": str(exc)}, status=400)
             absent = blobs.missing(rows)
             if absent:
-                return Response({"detail": f"{len(absent)} files have not been uploaded yet", "missing": absent}, status=409)
+                return Response({"detail": tr("{count} files have not been uploaded yet", count=len(absent)), "missing": absent}, status=409)
             tree = blobs.save_tree(rows)
         upload = request.FILES.get("file")
         if upload is not None and not tree:
@@ -344,7 +345,7 @@ class DeploymentCancel(APIView):
         app = _app(request, slug)
         dep = get_object_or_404(Deployment, app=app, pk=pk)
         if dep.status not in (Deployment.Status.QUEUED, Deployment.Status.BUILDING):
-            return Response({"detail": "This deployment is not queued or building and cannot be canceled"}, status=400)
+            return Response({"detail": tr("This deployment is not queued or building and cannot be canceled")}, status=400)
         from engine.runner import request_cancel
 
         state = request_cancel(dep)
@@ -386,7 +387,7 @@ class EnvView(APIView):
         for item in items:
             key = str(item.get("key") or "").strip()
             if not key or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", key):
-                return Response({"detail": f"Invalid key: {key}"}, status=400)
+                return Response({"detail": tr("Invalid key: {key}", key=key)}, status=400)
             value = str(item.get("value") or "")
             if value == SECRET_MASK and app.env_vars.filter(key=key, is_secret=True).exists():
                 # A client echoed back the masked placeholder; never overwrite the real secret with it.
@@ -413,9 +414,9 @@ class DomainListCreate(APIView):
         app = _app(request, slug)
         hostname = (request.data.get("hostname") or "").strip().lower().rstrip(".")
         if not HOSTNAME_RE.match(hostname):
-            return Response({"detail": "Invalid domain; use a bare hostname such as app.example.com (no http:// and no path)"}, status=400)
+            return Response({"detail": tr("Invalid domain; use a bare hostname such as app.example.com (no http:// and no path)")}, status=400)
         if Domain.objects.filter(hostname=hostname).exists():
-            return Response({"detail": "This domain is already registered"}, status=400)
+            return Response({"detail": tr("This domain is already registered")}, status=400)
         kind = Domain.Kind.SSLIP if is_default_hostname(hostname) else Domain.Kind.CUSTOM
         domain = Domain.objects.create(app=app, hostname=hostname, kind=kind, ssl_status=Domain.Ssl.PENDING)
         failed = _sync_running(request, app)
@@ -537,19 +538,24 @@ class DomainCheck(APIView):
         expected = settings.PUBLIC_IP
         cdn = behind_cdn(domain.hostname, found) if found and expected not in found else ""
         if not found:
-            state, message = "missing", "The domain does not resolve yet; add the record or wait a few minutes."
+            state, message = "missing", tr("The domain does not resolve yet; add the record or wait a few minutes.")
         elif expected in found:
-            state, message = "ok", "The record is correct and points at this server."
+            state, message = "ok", tr("The record is correct and points at this server.")
         elif cdn:
             state = "proxied"
-            message = (
-                f"The {cdn} proxy is enabled and the domain points at its IPs ({', '.join(found)}). "
-                "Either disable the proxy so the SSL certificate can be issued on this server, "
-                f"or keep it on and set {cdn}'s connection to the origin to HTTP."
+            message = tr(
+                "The {cdn} proxy is enabled and the domain points at its IPs ({ips}). Either disable the proxy so the SSL "
+                "certificate can be issued on this server, or keep it on and set {cdn}'s connection to the origin to HTTP.",
+                cdn=cdn,
+                ips=", ".join(found),
             )
         else:
             state = "mismatch"
-            message = f"The domain points at {', '.join(found)}, not {expected}. If a CDN proxy is enabled for the record, disable it."
+            message = tr(
+                "The domain points at {ips}, not {expected}. If a CDN proxy is enabled for the record, disable it.",
+                ips=", ".join(found),
+                expected=expected,
+            )
         return Response({"state": state, "message": message, "found": found, "expected": expected})
 
 
@@ -569,7 +575,7 @@ class DomainDetail(APIView):
         app = _app(request, slug)
         domain = get_object_or_404(Domain, app=app, pk=pk)
         if domain.is_primary:
-            return Response({"detail": "The app's primary domain cannot be removed"}, status=400)
+            return Response({"detail": tr("The app's primary domain cannot be removed")}, status=400)
         app.redirects.filter(source_host=domain.hostname).delete()
         domain.delete()
         failed = _sync_running(request, app)
@@ -632,7 +638,7 @@ class MetricsView(APIView):
         data = metrics_for(app)
         range_key = request.query_params.get("range") or "1h"
         if range_key not in RANGES:
-            return Response({"detail": "Range must be 1h, 6h, 24h or 7d"}, status=400)
+            return Response({"detail": tr("Range must be 1h, 6h, 24h or 7d")}, status=400)
         data["series"] = series_for(app, range_key)
         return Response(data)
 
@@ -679,7 +685,7 @@ class CronListCreate(APIView):
         schedule = (request.data.get("schedule") or "").strip()
         command = (request.data.get("command") or "").strip()
         if len(schedule.split()) != 5 or not command:
-            return Response({"detail": "A five-field schedule and a command are required"}, status=400)
+            return Response({"detail": tr("A five-field schedule and a command are required")}, status=400)
         error = _cron_error(schedule)
         if error:
             return Response({"detail": error}, status=400)
@@ -713,7 +719,7 @@ class CronDetail(APIView):
         if "command" in data:
             command = str(data.get("command") or "").strip()
             if not command:
-                return Response({"detail": "Command is required"}, status=400)
+                return Response({"detail": tr("Command is required")}, status=400)
             cron.command = command[:400]
         if "enabled" in data:
             cron.enabled = bool(data.get("enabled"))
@@ -806,13 +812,13 @@ class DiskBackupDetail(APIView):
 class DiskBackupDownload(APIView):
     def get(self, request, slug, name, bid):
         if request.membership.role == Membership.Role.VIEWER:
-            return Response({"detail": "Viewers cannot download backups"}, status=403)
+            return Response({"detail": tr("Viewers cannot download backups")}, status=403)
         backup = get_object_or_404(
             DiskBackup, app=_app(request, slug), disk_name=name, pk=bid, status=DiskBackup.Status.READY
         )
         path = Path(backup.path)
         if not path.is_file():
-            return Response({"detail": "The backup file is not on the server"}, status=404)
+            return Response({"detail": tr("The backup file is not on the server")}, status=404)
         return FileResponse(path.open("rb"), as_attachment=True, filename=path.name)
 
 

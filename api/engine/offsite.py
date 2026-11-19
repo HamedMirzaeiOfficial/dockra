@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from django.conf import settings
+from config.i18n import tr
 
 
 def enabled() -> bool:
@@ -69,5 +70,5 @@ def upload(path: Path, key: str) -> str:
     finally:
         conn.close()
     if resp.status >= 300:
-        raise RuntimeError(f"Uploading the backup to S3 failed ({resp.status}): {body[:300]}")
+        raise RuntimeError(tr("Uploading the backup to S3 failed ({status}): {value}", status=resp.status, value=body[:300]))
     return full_key

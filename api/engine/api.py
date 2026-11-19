@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from engine.models import Job
+from config.i18n import tr
 
 WATCHABLE = (Job.Kind.IMPORT_DB, Job.Kind.RESTORE, Job.Kind.DISK_IMPORT, Job.Kind.DISK_RESTORE, Job.Kind.BACKUP)
 
@@ -13,9 +14,9 @@ def job_payload(job: Job) -> dict:
     return {
         "id": job.id,
         "kind": job.kind,
-        "kind_label": job.get_kind_display(),
+        "kind_label": tr(job.get_kind_display()),
         "status": job.status,
-        "status_label": job.get_status_display(),
+        "status_label": tr(job.get_status_display()),
         "log": job.log,
         "result": job.result or {},
     }

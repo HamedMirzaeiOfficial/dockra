@@ -6,6 +6,7 @@ from pathlib import Path
 from django.conf import settings
 
 from engine.resources import QuotaExceeded
+from config.i18n import tr
 
 _SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,60}$")
 
@@ -19,7 +20,7 @@ def data_root() -> Path:
 
 def _check_name(name: str) -> str:
     if not _SAFE.match(name or ""):
-        raise RuntimeError("Invalid volume name")
+        raise RuntimeError(tr("Invalid volume name"))
     return name
 
 
@@ -27,7 +28,7 @@ def _docker(args: list[str], check: bool = True, script: str = "") -> subprocess
     try:
         proc = subprocess.run(["docker", *args], input=script.encode() if script else None, capture_output=True)
     except FileNotFoundError as exc:
-        raise RuntimeError("docker command not found in PATH") from exc
+        raise RuntimeError(tr("docker command not found in PATH")) from exc
     if check and proc.returncode != 0:
         err = (proc.stderr or proc.stdout or b"").decode("utf-8", "replace").strip()
         raise RuntimeError(err or "Creating the volume failed")

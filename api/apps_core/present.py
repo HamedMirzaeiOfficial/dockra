@@ -2,6 +2,7 @@ from django.conf import settings
 
 from apps_core.models import App, CronJob, Deployment, Disk, Domain, EnvVar, Redirect
 from engine.metrics import metrics_for
+from config.i18n import tr
 
 
 def _iso(value):
@@ -17,7 +18,7 @@ def deployment_payload(dep: Deployment) -> dict:
         "number": dep.number,
         "version": f"v{dep.number}",
         "status": dep.status,
-        "status_label": dep.get_status_display(),
+        "status_label": tr(dep.get_status_display()),
         "message": dep.message,
         "image": dep.image,
         "created_at": _iso(dep.created_at),
@@ -34,11 +35,11 @@ def app_payload(app, reveal_secrets: bool = False, detail: bool = False) -> dict
         "name": app.name,
         "slug": app.slug,
         "platform": app.platform,
-        "platform_label": app.get_platform_display(),
+        "platform_label": tr(app.get_platform_display()),
         "region": App.Region.LOCAL,
-        "region_label": "This server",
+        "region_label": tr("This server"),
         "status": app.status,
-        "status_label": app.get_status_display(),
+        "status_label": tr(app.get_status_display()),
         "instances": 0 if app.status in ("stopped", "failed") else app.instances,
         "desired_instances": app.instances,
         "port": app.port,
@@ -140,11 +141,11 @@ def pipeline_for(app) -> list[dict]:
         run_state = "pending"
 
     return [
-        {"key": "source", "label": "Source", "state": source_state},
-        {"key": "build", "label": "Build", "state": build_state},
+        {"key": "source", "label": tr("Source"), "state": source_state},
+        {"key": "build", "label": tr("Build"), "state": build_state},
         {"key": "docker", "label": "Docker", "state": docker_state},
-        {"key": "ssl", "label": "SSL", "state": ssl_state},
-        {"key": "run", "label": "Release", "state": run_state},
+        {"key": "ssl", "label": tr("SSL"), "state": ssl_state},
+        {"key": "run", "label": tr("Release"), "state": run_state},
     ]
 
 
@@ -172,11 +173,11 @@ def domain_payload(domain: Domain) -> dict:
         "id": domain.id,
         "hostname": domain.hostname,
         "ssl_status": domain.ssl_status,
-        "ssl_label": domain.get_ssl_status_display(),
+        "ssl_label": tr(domain.get_ssl_status_display()),
         "is_primary": domain.is_primary,
         "redirect_https": domain.redirect_https,
         "kind": domain.kind,
-        "kind_label": domain.get_kind_display(),
+        "kind_label": tr(domain.get_kind_display()),
         "app": domain.app.slug,
         "app_name": domain.app.name,
         "created_at": _iso(domain.created_at),
@@ -190,7 +191,7 @@ def redirect_payload(redirect: Redirect) -> dict:
         "source_host": redirect.source_host,
         "source_path": redirect.source_path,
         "match": redirect.match,
-        "match_label": redirect.get_match_display(),
+        "match_label": tr(redirect.get_match_display()),
         "target": redirect.target,
         "keep_path": redirect.keep_path,
         "permanent": redirect.permanent,
@@ -216,9 +217,9 @@ def disk_backup_payload(backup) -> dict:
         "id": backup.id,
         "disk": backup.disk_name,
         "kind": backup.kind,
-        "kind_label": backup.get_kind_display(),
+        "kind_label": tr(backup.get_kind_display()),
         "status": backup.status,
-        "status_label": backup.get_status_display(),
+        "status_label": tr(backup.get_status_display()),
         "size_bytes": backup.size_bytes,
         "error": backup.error,
         "offsite": bool(backup.remote_key),

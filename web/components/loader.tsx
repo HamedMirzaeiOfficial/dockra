@@ -1,3 +1,5 @@
+import { t } from "@/lib/i18n";
+
 export function Dots({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const dot = size === "sm" ? "h-1.5 w-1.5" : size === "lg" ? "h-3.5 w-3.5" : "h-2.5 w-2.5";
   const gap = size === "sm" ? "gap-1" : size === "lg" ? "gap-3" : "gap-2";
@@ -14,16 +16,16 @@ export function ScreenLoader() {
   return (
     <div className="fixed inset-0 grid place-items-center bg-bg" role="status" aria-live="polite">
       <Dots size="lg" />
-      <span className="sr-only">Loading</span>
+      <span className="sr-only">{t("Loading")}</span>
     </div>
   );
 }
 
-export function Loader({ label = "Loading" }: { label?: string }) {
+export function Loader({ label }: { label?: string }) {
   return (
     <div className="flex flex-1 items-center justify-center" role="status" aria-live="polite">
       <Dots />
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{label ?? t("Loading")}</span>
     </div>
   );
 }
@@ -51,7 +53,7 @@ export function ListSkeleton({ rows = 4 }: { rows?: number }) {
           </div>
         ))}
       </div>
-      <span className="sr-only">Loading</span>
+      <span className="sr-only">{t("Loading")}</span>
     </div>
   );
 }
@@ -74,7 +76,7 @@ export function DetailSkeleton() {
           <Skeleton className="h-64 rounded-xl" />
         </div>
       </div>
-      <span className="sr-only">Loading</span>
+      <span className="sr-only">{t("Loading")}</span>
     </div>
   );
 }

@@ -1,5 +1,7 @@
 # Security
 
+**English** · [فارسی](fa/security.md)
+
 Dockra is designed for a team running **its own** applications on **its own** server. This page describes what the platform protects, how, and — just as important — what it does not.
 
 ## Threat model

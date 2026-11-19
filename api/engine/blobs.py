@@ -15,6 +15,7 @@ import time
 from pathlib import Path, PurePosixPath
 
 from django.conf import settings
+from config.i18n import tr
 
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 MAX_FILES = 50_000
@@ -44,26 +45,26 @@ def _clean_path(raw) -> str:
     text = str(raw or "").replace("\\", "/")
     path = PurePosixPath(text)
     if not text or path.is_absolute() or any(part in ("", ".", "..") for part in text.split("/")):
-        raise TreeError(f"Invalid path: {text}")
+        raise TreeError(tr("Invalid path: {path}", path=text))
     return path.as_posix()
 
 
 def normalize_tree(files) -> list[dict]:
     if not isinstance(files, list) or not files:
-        raise TreeError("The file list is empty")
+        raise TreeError(tr("The file list is empty"))
     if len(files) > MAX_FILES:
-        raise TreeError(f"More than {MAX_FILES} files")
+        raise TreeError(tr("More than {max_files} files", max_files=MAX_FILES))
     seen = set()
     out = []
     for item in files:
         if not isinstance(item, dict):
-            raise TreeError("Invalid file list")
+            raise TreeError(tr("Invalid file list"))
         path = _clean_path(item.get("path"))
         digest = str(item.get("hash") or "").lower()
         if not HASH_RE.match(digest):
-            raise TreeError(f"Invalid hash for {path}")
+            raise TreeError(tr("Invalid hash for {path}", path=path))
         if path in seen:
-            raise TreeError(f"Duplicate path: {path}")
+            raise TreeError(tr("Duplicate path: {path}", path=path))
         seen.add(path)
         mode = 0o755 if int(item.get("mode") or 0) & 0o111 else 0o644
         out.append({"path": path, "hash": digest, "size": int(item.get("size") or 0), "mode": mode})
@@ -94,7 +95,7 @@ def _write_blob(digest: str, data_iter) -> None:
             handle.write(chunk)
     if sha.hexdigest() != digest:
         tmp.unlink(missing_ok=True)
-        raise TreeError(f"File content does not match hash {digest[:12]}")
+        raise TreeError(tr("File content does not match hash {value}", value=digest[:12]))
     os.replace(tmp, dest)
 
 
@@ -107,7 +108,7 @@ def store_tar(stream) -> int:
                 continue
             digest = member.name.rsplit("/", 1)[-1].lower()
             if not HASH_RE.match(digest):
-                raise TreeError(f"Invalid member name: {member.name}")
+                raise TreeError(tr("Invalid member name: {name}", name=member.name))
             handle = archive.extractfile(member)
             if has(digest):
                 continue

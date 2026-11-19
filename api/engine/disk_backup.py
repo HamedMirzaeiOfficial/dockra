@@ -13,6 +13,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps_core.models import App, Disk, DiskBackup
+from config.i18n import tr
 
 
 def backup_folder() -> Path:
@@ -67,7 +68,7 @@ def make_backup(backup: DiskBackup) -> None:
     """Create the backup and mark the row READY; raises on failure."""
     disk = backup.disk
     if disk is None:
-        raise RuntimeError("The disk of this backup has been deleted")
+        raise RuntimeError(tr("The disk of this backup has been deleted"))
     src = disk_data(disk)
     folder = backup_folder()
     folder.mkdir(parents=True, exist_ok=True)
@@ -76,7 +77,7 @@ def make_backup(backup: DiskBackup) -> None:
     need = _used_bytes(src)
     free = shutil.disk_usage(folder).free
     if need > free - reserve:
-        raise RuntimeError(f"Not enough free space on the server to back up disk {disk.name}")
+        raise RuntimeError(tr("Not enough free space on the server to back up disk {name}", name=disk.name))
     dest = folder / f"{disk.app.slug}-{disk.name}-{backup.id}.tar.gz"
     try:
         _pack(src, dest)
@@ -127,7 +128,7 @@ def restore(backup: DiskBackup, disk: Disk) -> DiskBackup:
     and the current files are not removed until the restore has completed."""
     src = Path(backup.path)
     if backup.status != DiskBackup.Status.READY or not src.is_file():
-        raise RuntimeError("The file of this backup is not on the server")
+        raise RuntimeError(tr("The file of this backup is not on the server"))
     safety = DiskBackup.objects.create(app=disk.app, disk=disk, disk_name=disk.name, kind=DiskBackup.Kind.SAFETY)
     try:
         make_backup(safety)
@@ -136,7 +137,7 @@ def restore(backup: DiskBackup, disk: Disk) -> DiskBackup:
         safety.error = str(exc)[-2000:]
         safety.finished_at = timezone.now()
         safety.save(update_fields=["status", "error", "finished_at"])
-        raise RuntimeError(f"Could not take the pre-restore backup; the disk was not touched\n{exc}") from exc
+        raise RuntimeError(tr("Could not take the pre-restore backup; the disk was not touched\n{exc}", exc=exc)) from exc
     root = disk_data(disk)
     incoming = root / f".dockra-restore-{backup.id}"
     old = root / f".dockra-old-{backup.id}"

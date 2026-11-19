@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 
 from django.conf import settings
+from config.i18n import tr
 
 
 # If host memory runs out (possible with overcommit), the kernel kills apps (0) first, then databases; platform services are -900.
@@ -59,9 +60,9 @@ def _run(
     try:
         proc = subprocess.run(args, input=input_bytes, capture_output=True, timeout=timeout, env=env)
     except FileNotFoundError as exc:
-        raise RuntimeError("docker command not found in PATH") from exc
+        raise RuntimeError(tr("docker command not found in PATH")) from exc
     except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(f"The command took longer than {int(timeout or 0)} seconds and was stopped") from exc
+        raise RuntimeError(tr("The command took longer than {value} seconds and was stopped", value=int(timeout or 0))) from exc
     if check and proc.returncode != 0:
         err = (proc.stderr or proc.stdout or b"").decode("utf-8", "replace").strip()
         raise RuntimeError(err or f"docker exited with code {proc.returncode}")
@@ -85,7 +86,7 @@ def _stream(
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
     except FileNotFoundError as exc:
-        raise RuntimeError("docker command not found in PATH") from exc
+        raise RuntimeError(tr("docker command not found in PATH")) from exc
     timer = None
     expired = threading.Event()
     canceled = threading.Event()
@@ -138,7 +139,7 @@ def _stream(
     if canceled_now:
         raise BuildCanceled("Build canceled")
     if expired.is_set():
-        raise RuntimeError(f"The build took longer than {int(timeout)} seconds and was stopped")
+        raise RuntimeError(tr("The build took longer than {value} seconds and was stopped", value=int(timeout)))
     if check and code != 0:
         err = "\n".join(line for line in collected[-40:] if line).strip()
         raise RuntimeError(err or f"docker exited with code {code}")
@@ -344,7 +345,7 @@ class FakeDriver:
 
     def provision_database(self, database, password: str | None = None) -> dict:
         if database.engine not in DB_SPECS:
-            raise RuntimeError("Unsupported database engine")
+            raise RuntimeError(tr("Unsupported database engine"))
         spec = DB_SPECS[database.engine]
         user = "default" if database.engine == "redis" else db_user(database)
         return {
@@ -363,7 +364,7 @@ class FakeDriver:
 
     def restore_database(self, database, src: Path) -> str:
         if not src.exists():
-            raise RuntimeError("Backup file not found")
+            raise RuntimeError(tr("Backup file not found"))
         return "(fake) restored"
 
     def exec_cron(self, app, command: str) -> str:
@@ -550,12 +551,12 @@ class DockerDriver:
             if state != "true":
                 logs = _run(["docker", "logs", "--tail", "20", name], check=False)
                 text = ((logs.stdout or b"") + (logs.stderr or b"")).decode("utf-8", "replace").strip()
-                raise RuntimeError(f"{dbadmin.tool_name(database)} did not start: {text[-600:]}")
+                raise RuntimeError(tr("{value} did not start: {value2}", value=dbadmin.tool_name(database), value2=text[-600:]))
             net = _run(["docker", "exec", name, "cat", "/proc/net/tcp", "/proc/net/tcp6"], check=False)
             if dbadmin.listening((net.stdout or b"").decode(), tool["port"]):
                 return
             time.sleep(1)
-        raise RuntimeError(f"{dbadmin.tool_name(database)} was not ready in time")
+        raise RuntimeError(tr("{value} was not ready in time", value=dbadmin.tool_name(database)))
 
     def stop_db_admin(self, database) -> None:
         from engine.dbadmin import container_name as admin_name
@@ -672,7 +673,7 @@ class DockerDriver:
 
     def build_and_run(self, app, deployment, source_dir, on_log=None, release: str = "", should_cancel=None) -> str:
         if source_dir is None and not deployment.image and not app.current_image:
-            raise RuntimeError("No build source (archive or git) exists")
+            raise RuntimeError(tr("No build source (archive or git) exists"))
         self._ensure_network()
         image = deployment.image or f"dockra/{app.slug}:v{deployment.number}"
         if source_dir is not None:
@@ -719,7 +720,7 @@ class DockerDriver:
             )
         except RuntimeError as exc:
             _run(["docker", "rm", "-f", name], check=False)
-            raise RuntimeError(f"The release command failed; the current release was not touched\n{exc}") from exc
+            raise RuntimeError(tr("The release command failed; the current release was not touched\n{exc}", exc=exc)) from exc
         finally:
             if env_file:
                 env_file.unlink(missing_ok=True)
@@ -824,7 +825,7 @@ class DockerDriver:
             return
         ids = self._containers(app)
         if not ids:
-            raise RuntimeError("There is no container to restart")
+            raise RuntimeError(tr("There is no container to restart"))
         _run(["docker", "restart", *ids])
 
     def stop(self, app) -> None:
@@ -834,7 +835,7 @@ class DockerDriver:
 
     def _relaunch(self, app) -> None:
         if not app.current_image:
-            raise RuntimeError("There is no image to run; deploy once first")
+            raise RuntimeError(tr("There is no image to run; deploy once first"))
         self._ensure_network()
         from engine.locks import app_lock
 
@@ -849,7 +850,7 @@ class DockerDriver:
         desired = max(app.instances, 1)
         if not ids or len(ids) != desired:
             if not app.current_image and not ids:
-                raise RuntimeError("There is no container to start; deploy once first")
+                raise RuntimeError(tr("There is no container to start; deploy once first"))
             if app.current_image:
                 self._relaunch(app)
                 return
@@ -1132,7 +1133,7 @@ class DockerDriver:
     def exec(self, app, command: str, timeout: int | None = None) -> tuple[str, int]:
         ids = self._containers(app, running_only=True)
         if not ids:
-            raise RuntimeError("The app container is not running")
+            raise RuntimeError(tr("The app container is not running"))
         done = _run(
             ["docker", "exec", ids[0], "sh", "-c", command],
             check=False,
@@ -1145,7 +1146,7 @@ class DockerDriver:
         """Create (or, with an existing password, recreate) the database container. Data stays on the disk."""
         self._ensure_network()
         if database.engine not in DB_SPECS:
-            raise RuntimeError("Unsupported database engine")
+            raise RuntimeError(tr("Unsupported database engine"))
         spec = DB_SPECS[database.engine]
         name = f"dockra-db-{database.name}"
         password = password or secrets.token_urlsafe(18)
@@ -1242,7 +1243,7 @@ class DockerDriver:
             if self._db_ping(engine, name, user, password, db_name):
                 return
             time.sleep(1)
-        raise RuntimeError("The database did not start in time")
+        raise RuntimeError(tr("The database did not start in time"))
 
     def _pipe_out(self, cmd: list[str], dest: Path) -> None:
         with dest.open("wb") as handle:
@@ -1282,7 +1283,7 @@ class DockerDriver:
                 code = proc.wait(timeout=7200)
             except subprocess.TimeoutExpired as exc:
                 proc.kill()
-                raise RuntimeError("The restore took longer than two hours and was stopped") from exc
+                raise RuntimeError(tr("The restore took longer than two hours and was stopped")) from exc
             out.seek(0, 2)
             out.seek(max(0, out.tell() - 200_000))
             text = out.read().decode("utf-8", "replace").strip()
@@ -1379,7 +1380,7 @@ class DockerDriver:
             _run(["docker", "exec", "-e", f"REDISCLI_AUTH={password}", name, "redis-cli", "SAVE"])
             _run(["docker", "cp", f"{name}:/data/dump.rdb", str(dest)])
         else:
-            raise RuntimeError("Unsupported database engine")
+            raise RuntimeError(tr("Unsupported database engine"))
         return dest.stat().st_size
 
     def restore_database(self, database, src: Path) -> str:
@@ -1397,8 +1398,7 @@ class DockerDriver:
                     # An older pg_restore cannot read a newer pg_dump file; reject before touching any data.
                     if "unsupported version" in str(exc):
                         raise RuntimeError(
-                            f"This backup was taken with a PostgreSQL newer than {database.version}; "
-                            "create a database with the same or a higher version than the source and restore there"
+                            tr("This backup was taken with a PostgreSQL newer than {version}; create a database with the same or a higher version than the source and restore there", version=database.version)
                         ) from exc
                     raise
             _run(["docker", "exec", name, "psql", "-U", database.username, "-d", database.db_name, "-c",
@@ -1439,8 +1439,7 @@ class DockerDriver:
             if rdb and limit and rdb > limit:
                 need = RDB_MIN_REDIS.get(rdb, "a newer release")
                 raise RuntimeError(
-                    f"This RDB file (version {rdb}) needs Redis {need} or later and Redis {database.version} cannot load it; "
-                    f"create a Redis database with version {need} or later"
+                    tr("This RDB file (version {rdb}) needs Redis {need} or later and Redis {version} cannot load it; create a Redis database with version {need} or later", rdb=rdb, need=need, version=database.version)
                 )
             plain = _plain_copy(src)
             try:
@@ -1452,7 +1451,7 @@ class DockerDriver:
                     plain.unlink(missing_ok=True)
             self._wait_db(engine, name, "default", password, "0")
             return "dump.rdb restored"
-        raise RuntimeError("Unsupported database engine")
+        raise RuntimeError(tr("Unsupported database engine"))
 
     def exec_cron(self, app, command: str) -> str:
         out, code = self.exec(app, command, timeout=settings.DOCKRA_CRON_TIMEOUT)

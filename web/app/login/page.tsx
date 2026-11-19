@@ -3,9 +3,11 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dots } from "@/components/loader";
+import { LangSwitch } from "@/components/lang";
 import { LogoMark } from "@/components/logo";
 import { Field, inputClass } from "@/components/ui";
 import { ApiError, TOKEN_KEY, api } from "@/lib/api";
+import { t } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,9 +35,9 @@ export default function LoginPage() {
           setNeedOtp(true);
           return;
         }
-        setError(err.message || "Sign-in failed");
+        setError(err.message || t("Sign-in failed"));
       } else {
-        setError("Could not reach the server");
+        setError(t("Could not reach the server"));
       }
     } finally {
       setBusy(false);
@@ -49,23 +51,24 @@ export default function LoginPage() {
       <main className="sd-rise relative w-full max-w-sm">
         <div className="mb-7 flex flex-col items-center text-center">
           <LogoMark size={44} className="shadow-glow rounded-xl" />
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight">Sign in to Dockra</h1>
-          <p className="mt-1.5 text-sm text-muted">From code to cloud — on your own server.</p>
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight">{t("Sign in to Dockra")}</h1>
+          <p className="mt-1.5 text-sm text-muted">{t("From code to cloud — on your own server.")}</p>
         </div>
         <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-line bg-card/90 p-6 shadow-pop backdrop-blur">
-          <Field label="Username">
-            <input className={inputClass} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="admin" autoComplete="username" autoFocus />
+          <Field label={t("Username")}>
+            <input className={inputClass} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="admin" autoComplete="username" dir="ltr" autoFocus />
           </Field>
-          <Field label="Password">
-            <input className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="••••••••" autoComplete="current-password" />
+          <Field label={t("Password")}>
+            <input className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="••••••••" autoComplete="current-password" dir="ltr" />
           </Field>
           {needOtp && (
-            <Field label="Two-factor code" hint="The 6-digit code from your authenticator app, or a recovery code (xxxx-xxxx).">
+            <Field label={t("Two-factor code")} hint={t("The 6-digit code from your authenticator app, or a recovery code (xxxx-xxxx).")}>
               <input
                 className={`${inputClass} text-center font-mono tracking-[0.3em]`}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 placeholder="123456"
+                dir="ltr"
                 inputMode="text"
                 autoComplete="one-time-code"
                 maxLength={9}
@@ -79,10 +82,11 @@ export default function LoginPage() {
             disabled={busy || (needOtp && !otp.trim())}
             className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-accent text-sm font-semibold text-ink shadow-glow transition-[transform,filter] duration-150 ease-out hover:brightness-110 active:scale-[0.98] disabled:opacity-80"
           >
-            {busy ? <span className="[&_.sd-dot]:!text-ink"><Dots size="sm" /></span> : "Sign in"}
+            {busy ? <span className="[&_.sd-dot]:!text-ink"><Dots size="sm" /></span> : t("Sign in")}
           </button>
         </form>
-        <p className="mt-6 text-center text-xs text-faint">Self-hosted · open source</p>
+        <p className="mt-6 text-center text-xs text-faint">{t("Self-hosted · open source")}</p>
+        <LangSwitch className="mx-auto mt-4 w-48" />
       </main>
     </div>
   );

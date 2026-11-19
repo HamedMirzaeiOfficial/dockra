@@ -18,6 +18,7 @@ from engine import dumps, uploads
 from engine.actions import enqueue
 from engine.models import Job
 from engine.resources import QuotaExceeded, ensure_capacity, parse_cpu, parse_range
+from config.i18n import tr
 
 CHUNK = 1 << 20
 
@@ -53,7 +54,7 @@ class DatabaseImport(APIView):
             return Response({"detail": error}, status=400)
         engine = (params.get("engine") or "").strip()
         if engine and engine not in ENGINES:
-            return Response({"detail": "Engine must be postgres, mysql, mariadb, mongodb or redis"}, status=400)
+            return Response({"detail": tr("Engine must be postgres, mysql, mariadb, mongodb or redis")}, status=400)
         version = (params.get("version") or "").strip()
         url = (params.get("url") or "").strip()
         uploaded = None
@@ -69,7 +70,7 @@ class DatabaseImport(APIView):
             except dumps.DumpError as exc:
                 return Response({"detail": str(exc)}, status=400)
         elif length <= 0:
-            return Response({"detail": "A backup file or url is required"}, status=400)
+            return Response({"detail": tr("A backup file or url is required")}, status=400)
         # Validate everything before reading the body so a large file is not uploaded for nothing. The CLI sends it compressed.
         try:
             resources = _resources(params, engine, length)
@@ -92,7 +93,7 @@ class DatabaseImport(APIView):
                     written += len(chunk)
             if written != length:
                 dest.unlink(missing_ok=True)
-                return Response({"detail": "Upload is incomplete; please try again"}, status=400)
+                return Response({"detail": tr("Upload is incomplete; please try again")}, status=400)
         if not url:
             try:
                 info = dumps.detect(dest)
@@ -106,7 +107,7 @@ class DatabaseImport(APIView):
         cpu, memory_mb, disk_gb = resources
         if Database.objects.filter(name=name).exists():
             dest.unlink(missing_ok=True)
-            return Response({"detail": "This name is already taken"}, status=400)
+            return Response({"detail": tr("This name is already taken")}, status=400)
 
         database = Database.objects.create(
             organization=request.membership.organization,

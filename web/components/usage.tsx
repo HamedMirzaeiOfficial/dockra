@@ -1,25 +1,27 @@
+import { pct } from "@/lib/format";
 import { Icon } from "@/components/icons";
+import { msg, t } from "@/lib/i18n";
 import { Card, Meter } from "@/components/ui";
 
 // Shared by apps and databases: list rows show MiniBars, the reports tab shows Gauges.
 
 export const RANGES = [
-  { value: "1h", label: "1 hour" },
-  { value: "6h", label: "6 hours" },
-  { value: "24h", label: "24 hours" },
-  { value: "7d", label: "7 days" },
+  { value: "1h", label: msg("1 hour") },
+  { value: "6h", label: msg("6 hours") },
+  { value: "24h", label: msg("24 hours") },
+  { value: "7d", label: msg("7 days") },
 ];
 
 export function MiniBar({ label, value }: { label: string; value: number }) {
   const width = Math.max(2, Math.min(100, value));
-  const color = value >= 85 ? "bg-danger" : value >= 65 ? "bg-warning" : label === "RAM" ? "bg-info" : "bg-accent";
+  const color = value >= 85 ? "bg-danger" : value >= 65 ? "bg-warning" : label === t("RAM") ? "bg-info" : "bg-accent";
   return (
     <div className="flex items-center gap-2 text-[10px] text-muted">
       <span className="w-7 shrink-0">{label}</span>
       <span className="h-1 w-24 overflow-hidden rounded-full bg-fg/[0.08]">
         <span className={`block h-full rounded-full ${color} transition-[width] duration-500`} style={{ width: `${width}%` }} />
       </span>
-      <span className="w-8 tabular-nums">{Math.round(value)}%</span>
+      <span className="w-8 tabular-nums">{pct(Math.round(value))}</span>
     </div>
   );
 }

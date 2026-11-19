@@ -7,7 +7,8 @@ import { Shell } from "@/components/shell";
 import { Skeleton } from "@/components/loader";
 import { Avatar, Card, CardHeader, Empty, Meter, PageHeader } from "@/components/ui";
 import { api, cached } from "@/lib/api";
-import { alertKind, fmt, relTime } from "@/lib/format";
+import { alertKind, fmt, pct, relTime } from "@/lib/format";
+import { msg, t } from "@/lib/i18n";
 
 type AlertRow = {
   id: number;
@@ -21,9 +22,9 @@ type AlertRow = {
 };
 
 const FILTERS = [
-  ["firing", "Firing"],
-  ["resolved", "Resolved"],
-  ["all", "All"],
+  ["firing", msg("Firing")],
+  ["resolved", msg("Resolved")],
+  ["all", msg("All")],
 ] as const;
 type Filter = (typeof FILTERS)[number][0];
 
@@ -40,12 +41,12 @@ export default function MonitoringPage() {
   return (
     <Shell>
       <PageHeader
-        title="Monitoring"
-        subtitle="Live resource usage of your applications"
+        title={t("Monitoring")}
+        subtitle={t("Live resource usage of your applications")}
         actions={
           <span className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-xs text-muted">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-            Refreshes every 5 seconds
+            {t("Refreshes every 5 seconds")}
           </span>
         }
       />
@@ -65,7 +66,7 @@ export default function MonitoringPage() {
           ))}
         </div>
       )}
-      {rows?.length === 0 && <Empty icon="activity" title="Nothing to show yet" text="Usage appears here once your first application is running." />}
+      {rows?.length === 0 && <Empty icon="activity" title={t("Nothing to show yet")} text={t("Usage appears here once your first application is running.")} />}
       {rows && rows.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((app) => (
@@ -75,12 +76,12 @@ export default function MonitoringPage() {
                 <span className="truncate font-semibold">{app.name}</span>
               </Link>
               <div className="mt-5 space-y-4">
-                <Usage icon="cpu" label="CPU" value={app.metrics.cpu} />
-                <Usage icon="memory" label="RAM" value={app.metrics.ram} />
+                <Usage icon="cpu" label={t("CPU")} value={app.metrics.cpu} />
+                <Usage icon="memory" label={t("RAM")} value={app.metrics.ram} />
               </div>
               <div className="mt-5 flex items-center justify-between rounded-lg bg-bg/60 px-3 py-2.5 text-xs">
-                <span className="inline-flex items-center gap-1.5 text-muted"><Icon name="network" size={14} />Network</span>
-                <span className="font-medium tabular-nums">{fmt(app.metrics.network_mbps)} <span className="text-muted">Mbps</span></span>
+                <span className="inline-flex items-center gap-1.5 text-muted"><Icon name="network" size={14} />{t("Network")}</span>
+                <span className="font-medium tabular-nums">{fmt(app.metrics.network_mbps)} <span className="text-muted">{t("Mbps")}</span></span>
               </div>
             </Card>
           ))}
@@ -104,7 +105,7 @@ function Alerts() {
   return (
     <Card className="mb-5 overflow-hidden">
       <CardHeader
-        title="Alerts"
+        title={t("Alerts")}
         icon="shield"
         action={
           <div className="flex gap-1 rounded-lg border border-line bg-bg/70 p-0.5">
@@ -116,7 +117,7 @@ function Alerts() {
                 aria-pressed={filter === id}
                 className={`rounded-md px-2.5 py-1 text-xs transition-colors duration-150 ${filter === id ? "bg-surface font-medium text-fg ring-1 ring-inset ring-accent/40" : "text-muted hover:text-fg"}`}
               >
-                {text}
+                {t(text)}
               </button>
             ))}
           </div>
@@ -127,7 +128,7 @@ function Alerts() {
           {[0, 1].map((i) => <Skeleton key={i} className="h-10" />)}
         </div>
       )}
-      {items?.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">{filter === "firing" ? "No active alerts." : "No alerts recorded."}</p>}
+      {items?.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">{filter === "firing" ? t("No active alerts.") : t("No alerts recorded.")}</p>}
       {items && items.length > 0 && (
         <ul className="divide-y divide-line/60">
           {items.map((item) => {
@@ -140,12 +141,12 @@ function Alerts() {
                   {item.app ? (
                     <Link href={`/apps/${item.app}`} className="truncate text-sm font-medium hover:text-brand">{item.app_name || item.app}</Link>
                   ) : (
-                    <span className="truncate text-sm font-medium">Server</span>
+                    <span className="truncate text-sm font-medium">{t("Server")}</span>
                   )}
                   <div className="truncate text-xs text-muted" dir="auto">{item.message}</div>
                 </div>
                 <span className="shrink-0 text-xs text-muted">
-                  {firing ? `since ${relTime(item.started_at)}` : `resolved ${relTime(item.resolved_at)}`}
+                  {firing ? t("since {ago}", { ago: relTime(item.started_at) }) : t("resolved {ago}", { ago: relTime(item.resolved_at) })}
                 </span>
               </li>
             );
@@ -161,7 +162,7 @@ function Usage({ icon, label, value }: { icon: "cpu" | "memory"; label: string; 
     <div>
       <div className="mb-2 flex items-center justify-between text-xs">
         <span className="inline-flex items-center gap-1.5 text-muted"><Icon name={icon} size={14} />{label}</span>
-        <span className="font-semibold tabular-nums">{fmt(value)}%</span>
+        <span className="font-semibold tabular-nums">{pct(value)}</span>
       </div>
       <Meter value={value} />
     </div>

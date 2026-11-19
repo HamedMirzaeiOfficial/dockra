@@ -1,4 +1,5 @@
 from datetime import datetime
+from config.i18n import tr
 
 
 def _match_field(expr: str, value: int) -> bool:
@@ -23,7 +24,7 @@ def _match_field(expr: str, value: int) -> bool:
 def cron_matches(expression: str, when: datetime) -> bool:
     fields = expression.split()
     if len(fields) != 5:
-        raise ValueError("A cron expression must have five fields")
+        raise ValueError(tr("A cron expression must have five fields"))
     minute, hour, dom, month, dow = fields
     cron_dow = (when.weekday() + 1) % 7
     if not _match_field(minute, when.minute):
@@ -42,7 +43,7 @@ def cron_matches(expression: str, when: datetime) -> bool:
 def split_cron(line: str) -> tuple[str, str]:
     parts = line.split()
     if len(parts) < 6:
-        raise ValueError("Incomplete cron line")
+        raise ValueError(tr("Incomplete cron line"))
     return " ".join(parts[:5]), " ".join(parts[5:])
 
 
@@ -53,7 +54,7 @@ def validate(expression: str) -> None:
     """Raise if any field is malformed or outside its allowed range."""
     fields = expression.split()
     if len(fields) != 5:
-        raise ValueError("A cron expression must have five fields")
+        raise ValueError(tr("A cron expression must have five fields"))
     for expr, (low, high) in zip(fields, _BOUNDS, strict=True):
         for part in expr.split(","):
             if part == "*":

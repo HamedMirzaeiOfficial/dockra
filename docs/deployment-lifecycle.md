@@ -1,5 +1,7 @@
 # Deployment lifecycle
 
+**English** · [فارسی](fa/deployment-lifecycle.md)
+
 This document follows one deployment from `dockra deploy` to live traffic, and explains what happens when something fails along the way.
 
 ## States

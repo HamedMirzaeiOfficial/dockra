@@ -17,6 +17,7 @@ from engine.actions import backup_database, enqueue, provision_database, restore
 from engine.drivers import DB_SPECS
 from engine.models import Job
 from engine.resources import QuotaExceeded, ensure_capacity, parse_cpu, parse_range
+from config.i18n import tr
 
 ENGINES = {
     Database.Engine.POSTGRES: "16",
@@ -55,9 +56,9 @@ def _backup(item: Backup) -> dict:
     return {
         "id": item.id,
         "kind": item.kind,
-        "kind_label": item.get_kind_display(),
+        "kind_label": tr(item.get_kind_display()),
         "status": item.status,
-        "status_label": item.get_status_display(),
+        "status_label": tr(item.get_status_display()),
         "size_bytes": item.size_bytes,
         "offsite": bool(item.remote_key),
         "created_at": item.created_at.isoformat(),
@@ -72,12 +73,12 @@ def database_payload(database: Database, reveal: bool, detail: bool = False) -> 
         "id": database.id,
         "name": database.name,
         "engine": database.engine,
-        "engine_label": database.get_engine_display(),
+        "engine_label": tr(database.get_engine_display()),
         "version": database.version,
         "status": database.status,
-        "status_label": database.get_status_display(),
+        "status_label": tr(database.get_status_display()),
         "region": "local",
-        "region_label": "This server",
+        "region_label": tr("This server"),
         "memory_mb": database.memory_mb,
         "cpu": float(database.cpu or 0),
         "disk_gb": database.disk_gb,
@@ -115,14 +116,14 @@ class DatabaseListCreate(APIView):
         name = (request.data.get("name") or "").strip().lower()
         engine = request.data.get("engine") or Database.Engine.POSTGRES
         if engine not in ENGINES:
-            return Response({"detail": "Engine must be postgres, mysql, mariadb, mongodb or redis"}, status=400)
+            return Response({"detail": tr("Engine must be postgres, mysql, mariadb, mongodb or redis")}, status=400)
         error = name_error(name)
         if error:
             return Response({"detail": error}, status=400)
         version = str(request.data.get("version") or ENGINES[engine]).strip()
         # Official image tag; numeric so the version is known (data path and backup compatibility depend on it).
         if not re.fullmatch(r"\d+(\.\d+){0,2}(-[a-z0-9.]+)?", version):
-            return Response({"detail": "Version must be a numeric tag of the official image, e.g. 16, 7.2 or 10.11"}, status=400)
+            return Response({"detail": tr("Version must be a numeric tag of the official image, e.g. 16, 7.2 or 10.11")}, status=400)
         try:
             if engine == Database.Engine.REDIS:
                 cpu = parse_cpu(request.data.get("cpu") or "0.25", low="0.10", high="4")
@@ -174,10 +175,10 @@ class DatabasePower(APIView):
     def post(self, request, pk):
         database = get_object_or_404(Database, organization=request.membership.organization, pk=pk)
         if self.kind == Job.Kind.DB_STOP and database.status != Database.Status.RUNNING:
-            return Response({"detail": "The database is not running"}, status=400)
+            return Response({"detail": tr("The database is not running")}, status=400)
         if self.kind == Job.Kind.DB_START:
             if database.status == Database.Status.RUNNING:
-                return Response({"detail": "The database is already running"}, status=400)
+                return Response({"detail": tr("The database is already running")}, status=400)
             try:
                 ensure_capacity(float(database.cpu or 0), database.memory_mb, database.disk_gb, skip_db_id=database.id)
             except QuotaExceeded as exc:
@@ -237,7 +238,7 @@ class DatabaseDetail(APIView):
 
     def delete(self, request, pk):
         if request.membership.role not in (Membership.Role.OWNER, Membership.Role.ADMIN):
-            return Response({"detail": "Only an admin can delete a database"}, status=403)
+            return Response({"detail": tr("Only an admin can delete a database")}, status=403)
         database = get_object_or_404(Database, organization=request.membership.organization, pk=pk)
         job = enqueue(Job.Kind.REMOVE_DB, {"database_id": database.id}, request.user, database.organization)
         if job.status == Job.Status.FAILED:
@@ -251,7 +252,7 @@ class BackupCreate(APIView):
     def post(self, request, pk):
         database = get_object_or_404(Database, organization=request.membership.organization, pk=pk)
         if database.status != Database.Status.RUNNING:
-            return Response({"detail": "The database is not running"}, status=400)
+            return Response({"detail": tr("The database is not running")}, status=400)
         backup = Backup.objects.create(database=database, status=Backup.Status.RUNNING)
         job = backup_database(backup, request.user)
         backup.refresh_from_db()
@@ -265,12 +266,12 @@ class DatabaseLinkView(APIView):
         default_key = DB_SPECS[database.engine]["env"]
         env_key = (request.data.get("env_key") or default_key).strip()
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,79}", env_key):
-            return Response({"detail": f"Invalid variable name: {env_key}"}, status=400)
+            return Response({"detail": tr("Invalid variable name: {env_key}", env_key=env_key)}, status=400)
         taken = DatabaseLink.objects.filter(app=app, env_key=env_key).exclude(database=database).select_related("database").first()
         if taken is not None:
             # Without this the previous database URL was silently overwritten and the app connected to a different database.
             return Response(
-                {"detail": f"{env_key} in this app is already linked to database {taken.database.name}; choose another variable name, e.g. {env_key}_2"},
+                {"detail": tr("{env_key} in this app is already linked to database {name}; choose another variable name, e.g. {env_key}_2", env_key=env_key, name=taken.database.name)},
                 status=400,
             )
         DatabaseLink.objects.update_or_create(database=database, app=app, defaults={"env_key": env_key})
@@ -281,7 +282,7 @@ class DatabaseLinkView(APIView):
         )
         job = sync_app(app, request.user)
         if job is not None and job.status == Job.Status.FAILED:
-            return Response({"detail": f"URL saved, but could not be applied to the container: {job.log.strip().splitlines()[-1]}"}, status=502)
+            return Response({"detail": tr("URL saved, but could not be applied to the container: {value}", value=job.log.strip().splitlines()[-1])}, status=502)
         return Response(database_payload(database, _reveal(request), detail=True))
 
 
@@ -301,11 +302,11 @@ class BackupDetail(APIView):
 class BackupDownload(APIView):
     def get(self, request, pk, bid):
         if not _reveal(request):
-            return Response({"detail": "Viewers cannot download backups"}, status=403)
+            return Response({"detail": tr("Viewers cannot download backups")}, status=403)
         backup = get_object_or_404(Backup, database=_database(request, pk), pk=bid, status=Backup.Status.READY)
         path = Path(backup.path)
         if not path.is_file():
-            return Response({"detail": "The backup file is not on the server"}, status=404)
+            return Response({"detail": tr("The backup file is not on the server")}, status=404)
         return FileResponse(path.open("rb"), as_attachment=True, filename=path.name)
 
 
@@ -317,7 +318,7 @@ class RestoreView(APIView):
     def post(self, request, pk):
         database = _database(request, pk)
         if database.status != Database.Status.RUNNING:
-            return Response({"detail": "The database is not running"}, status=400)
+            return Response({"detail": tr("The database is not running")}, status=400)
         upload = request.FILES.get("file")
         upload_id = request.data.get("upload") or request.query_params.get("upload")
         if upload_id:
@@ -354,7 +355,7 @@ class DatabaseMetrics(APIView):
         database = _database(request, pk)
         range_key = request.query_params.get("range") or "1h"
         if range_key not in RANGES:
-            return Response({"detail": "Range must be 1h, 6h, 24h or 7d"}, status=400)
+            return Response({"detail": tr("Range must be 1h, 6h, 24h or 7d")}, status=400)
         return Response({**database_metrics_for(database), "series": series_for(database, range_key)})
 
 

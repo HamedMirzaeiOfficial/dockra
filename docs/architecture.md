@@ -1,5 +1,7 @@
 # Architecture
 
+**English** · [فارسی](fa/architecture.md)
+
 Dockra is a single-host platform made of one Python codebase run in several roles, a Next.js dashboard, a CLI, Traefik and Docker.
 
 ## Components
@@ -124,3 +126,4 @@ The API issues a signed ticket (`django.core.signing`, 60 seconds) naming the ki
 - Next.js App Router; every page is a client component that talks to the API with a bearer token stored in `localStorage` (the CSP prevents loading external scripts or exfiltrating to other origins).
 - `lib/api.ts` wraps `fetch` with error normalization, an in-memory cache for instant back-navigation, and chunked resumable uploads.
 - `components/ui.tsx` holds the primitives; colors come only from the design tokens described in [design-system.md](design-system.md).
+- `lib/i18n.ts` and `lib/locales/fa/` translate the panel (English text as key, Persian dictionary); every request sends `Accept-Language`, and Django's `LocaleMiddleware` plus `config/i18n.py` answer API messages in the same language. See [development.md](development.md#translations-english-and-persian).

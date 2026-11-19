@@ -8,6 +8,7 @@ import { Alert, Avatar, Button, Card, CardHeader, Choice, CopyText, Field, FormS
 import { TOKEN_KEY, api, cached } from "@/lib/api";
 import { Skeleton } from "@/components/loader";
 import { relTime } from "@/lib/format";
+import { intlLocale, msg, t } from "@/lib/i18n";
 
 type Role = "owner" | "admin" | "developer" | "viewer";
 type Member = { id: number; username: string; name: string; role: Role; role_label: string; is_active: boolean; is_self: boolean };
@@ -16,23 +17,23 @@ type Setup = { secret: string; otpauth_url: string };
 type Audit = { id: number; action: string; target: string; detail: string; actor: string; created_at: string };
 
 const EXPIRY = [
-  { value: "30", label: "30 days" },
-  { value: "90", label: "90 days" },
-  { value: "365", label: "1 year" },
-  { value: "", label: "Never" },
+  { value: "30", label: msg("30 days") },
+  { value: "90", label: msg("90 days") },
+  { value: "365", label: msg("1 year") },
+  { value: "", label: msg("Never") },
 ];
 
 function expiryLabel(iso: string | null) {
-  if (!iso) return "Never expires";
+  if (!iso) return t("Never expires");
   const date = new Date(iso);
-  const day = date.toLocaleDateString("en-US", { dateStyle: "medium" });
-  return date.getTime() < Date.now() ? `Expired · ${day}` : `Until ${day}`;
+  const day = date.toLocaleDateString(intlLocale(), { dateStyle: "medium" });
+  return date.getTime() < Date.now() ? t("Expired · {day}", { day }) : t("Until {day}", { day });
 }
 
 const ROLES = [
-  { value: "admin", label: "Admin", hint: "Full access" },
-  { value: "developer", label: "Developer", hint: "Deploy and configure" },
-  { value: "viewer", label: "Viewer", hint: "Read only" },
+  { value: "admin", label: msg("Admin"), hint: msg("Full access") },
+  { value: "developer", label: msg("Developer"), hint: msg("Deploy and configure") },
+  { value: "viewer", label: msg("Viewer"), hint: msg("Read only") },
 ];
 
 export default function SettingsPage() {
@@ -78,7 +79,7 @@ export default function SettingsPage() {
       await api("/api/members", { method: "POST", body: JSON.stringify(member) });
       setMember({ username: "", password: "", role: "developer", first_name: "", last_name: "" });
       load();
-      notify.success("Member added to the team.");
+      notify.success(t("Member added to the team."));
     } catch (err) {
       notifyError(err);
     }
@@ -105,17 +106,17 @@ export default function SettingsPage() {
       await api(`/api/members/${item.id}/password`, { method: "POST", body: JSON.stringify({ password: resetPassword }) });
       setResetting(null);
       setResetPassword("");
-    }, `The password of ${item.name || item.username} was changed and all their sessions were signed out.`);
+    }, t("The password of {name} was changed and all their sessions were signed out.", { name: item.name || item.username }));
 
   return (
     <Shell>
-      <PageHeader title="Settings" subtitle="Team members, access tokens and activity log" />
+      <PageHeader title={t("Settings")} subtitle={t("Team members, access tokens and activity log")} />
       <div className="space-y-5">
         <form onSubmit={addMember}>
           <FormSection
-            title="Team members"
-            description="Each member signs in to the panel and the CLI with their own username and password."
-            footer={<Button type="submit" icon="plus" disabled={!member.username || !member.password}>Add member</Button>}
+            title={t("Team members")}
+            description={t("Each member signs in to the panel and the CLI with their own username and password.")}
+            footer={<Button type="submit" icon="plus" disabled={!member.username || !member.password}>{t("Add member")}</Button>}
           >
             <ul className="divide-y divide-line/60 rounded-lg border border-line">
               {members === null && [0, 1].map((i) => (
@@ -135,8 +136,8 @@ export default function SettingsPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="truncate text-sm font-medium">{item.name}</span>
-                            {item.is_self && <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-brand">You</span>}
-                            {!item.is_active && <span className="shrink-0 rounded-full bg-fg/[0.05] px-2 py-0.5 text-[10px] font-medium text-muted">Disabled</span>}
+                            {item.is_self && <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-brand">{t("You")}</span>}
+                            {!item.is_active && <span className="shrink-0 rounded-full bg-fg/[0.05] px-2 py-0.5 text-[10px] font-medium text-muted">{t("Disabled")}</span>}
                           </div>
                           <div className="truncate text-xs text-muted">{item.username}</div>
                         </div>
@@ -148,11 +149,11 @@ export default function SettingsPage() {
                             value={item.role}
                             disabled={memberBusy}
                             onChange={(e) => updateMember(item.id, { role: e.target.value })}
-                            aria-label="Role"
+                            aria-label={t("Role")}
                           >
-                            {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                            {ROLES.map((r) => <option key={r.value} value={r.value}>{t(r.label)}</option>)}
                           </select>
-                          <Toggle on={item.is_active} label={item.is_active ? "Disable" : "Enable"} disabled={memberBusy} onChange={(on) => updateMember(item.id, { is_active: on })} />
+                          <Toggle on={item.is_active} label={item.is_active ? t("Disable") : t("Enable")} disabled={memberBusy} onChange={(on) => updateMember(item.id, { is_active: on })} />
                           <Button
                             type="button"
                             tone={resetting === item.id ? "soft" : "ghost"}
@@ -161,15 +162,16 @@ export default function SettingsPage() {
                             disabled={memberBusy}
                             onClick={() => { setResetting(resetting === item.id ? null : item.id); setResetPassword(""); }}
                           >
-                            Reset password
+                            {t("Reset password")}
                           </Button>
                           <button
                             type="button"
-                            title="Remove"
+                            title={t("Remove")}
+                            aria-label={t("Remove")}
                             disabled={memberBusy}
                             onClick={async () => {
-                              if (!(await confirmAction({ title: `Remove ${item.name || item.username} from the team?`, message: "Their access to the panel and every one of their tokens is revoked.", confirmLabel: "Remove from team" }))) return;
-                              manage(() => api(`/api/members/${item.id}`, { method: "DELETE" }), "Member removed.");
+                              if (!(await confirmAction({ title: t("Remove {name} from the team?", { name: item.name || item.username }), message: t("Their access to the panel and every one of their tokens is revoked."), confirmLabel: t("Remove from team") }))) return;
+                              manage(() => api(`/api/members/${item.id}`, { method: "DELETE" }), t("Member removed."));
                             }}
                             className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger disabled:opacity-50"
                           >
@@ -185,18 +187,18 @@ export default function SettingsPage() {
                       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                         <input
                           className={`${inputClass} sm:max-w-xs`}
-                         
+                          dir="ltr"
                           type="password"
                           autoComplete="new-password"
                           value={resetPassword}
                           onChange={(e) => setResetPassword(e.target.value)}
                           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (resetPassword) reset(item); } }}
-                          placeholder="New password"
+                          placeholder={t("New password")}
                           autoFocus
                         />
                         <div className="flex gap-2">
-                          <Button type="button" icon="check" disabled={memberBusy || !resetPassword} onClick={() => reset(item)}>Set password</Button>
-                          <Button type="button" tone="ghost" disabled={memberBusy} onClick={() => { setResetting(null); setResetPassword(""); }}>Cancel</Button>
+                          <Button type="button" icon="check" disabled={memberBusy || !resetPassword} onClick={() => reset(item)}>{t("Set password")}</Button>
+                          <Button type="button" tone="ghost" disabled={memberBusy} onClick={() => { setResetting(null); setResetPassword(""); }}>{t("Cancel")}</Button>
                         </div>
                       </div>
                     )}
@@ -205,22 +207,22 @@ export default function SettingsPage() {
               })}
             </ul>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Username"><input className={inputClass} autoComplete="off" value={member.username} onChange={(e) => setMember({ ...member, username: e.target.value })} placeholder="sara" /></Field>
-              <Field label="Password"><input className={inputClass} type="password" autoComplete="new-password" value={member.password} onChange={(e) => setMember({ ...member, password: e.target.value })} placeholder="At least 8 characters" /></Field>
+              <Field label={t("Username")}><input className={inputClass} dir="ltr" autoComplete="off" value={member.username} onChange={(e) => setMember({ ...member, username: e.target.value })} placeholder="sara" /></Field>
+              <Field label={t("Password")}><input className={inputClass} dir="ltr" type="password" autoComplete="new-password" value={member.password} onChange={(e) => setMember({ ...member, password: e.target.value })} placeholder={t("At least 8 characters")} /></Field>
             </div>
-            <Field label="Role"><Choice value={member.role} options={ROLES} onChange={(role) => setMember({ ...member, role })} /></Field>
+            <Field label={t("Role")}><Choice value={member.role} options={ROLES.map((r) => ({ ...r, label: t(r.label), hint: t(r.hint) }))} onChange={(role) => setMember({ ...member, role })} /></Field>
           </FormSection>
         </form>
 
         <form onSubmit={createToken}>
           <FormSection
-            title="API tokens"
-            description="For CI or scripts. A token is shown only once."
-            footer={<Button type="submit" icon="key" disabled={!tokenName.trim()}>Create token</Button>}
+            title={t("API tokens")}
+            description={t("For CI or scripts. A token is shown only once.")}
+            footer={<Button type="submit" icon="key" disabled={!tokenName.trim()}>{t("Create token")}</Button>}
           >
             {fresh && (
               <div className="rounded-lg border border-accent/30 bg-accent/[0.06] p-3">
-                <div className="mb-2 text-xs text-brand">New token — copy it now:</div>
+                <div className="mb-2 text-xs text-brand">{t("New token — copy it now:")}</div>
                 <CopyText text={fresh} className="w-full" />
               </div>
             )}
@@ -230,14 +232,15 @@ export default function SettingsPage() {
                   <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
                     <Icon name="key" size={16} className="text-muted" />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.name}</span>
-                    <span className="font-mono text-[11px] text-muted">{item.prefix}…</span>
+                    <span className="font-mono text-[11px] text-muted" dir="ltr">{item.prefix}…</span>
                     <span className="hidden text-xs text-muted sm:inline">{relTime(item.created_at)}</span>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${item.expires_at && new Date(item.expires_at).getTime() < Date.now() ? "bg-danger/10 text-danger" : "bg-fg/[0.05] text-fg-2"}`}>
                       {expiryLabel(item.expires_at)}
                     </span>
                     <button
                       type="button"
-                      title="Delete"
+                      title={t("Delete")}
+                      aria-label={t("Delete")}
                       onClick={async () => { await api(`/api/auth/tokens/${item.id}`, { method: "DELETE" }); load(); }}
                       className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger"
                     >
@@ -248,10 +251,10 @@ export default function SettingsPage() {
               </ul>
             )}
             <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
-              <Field label="Token name"><input className={inputClass} value={tokenName} onChange={(e) => setTokenName(e.target.value)} placeholder="e.g. github-actions" /></Field>
-              <Field label="Expiry">
+              <Field label={t("Token name")}><input className={inputClass} value={tokenName} onChange={(e) => setTokenName(e.target.value)} placeholder={t("e.g. github-actions")} /></Field>
+              <Field label={t("Expiry")}>
                 <select className={selectClass} value={expiry} onChange={(e) => setExpiry(e.target.value)}>
-                  {EXPIRY.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  {EXPIRY.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}
                 </select>
               </Field>
             </div>
@@ -263,8 +266,8 @@ export default function SettingsPage() {
         <TwoFactor />
 
         <Card>
-          <CardHeader title="Activity log" icon="activity" description="Recent actions on applications and databases" />
-          {audit?.length === 0 && <p className="px-5 py-10 text-center text-sm text-muted">No activity yet.</p>}
+          <CardHeader title={t("Activity log")} icon="activity" description={t("Recent actions on applications and databases")} />
+          {audit?.length === 0 && <p className="px-5 py-10 text-center text-sm text-muted">{t("No activity yet.")}</p>}
           <ul className="divide-y divide-line/60">
             {audit === null && [0, 1, 2, 3].map((i) => (
               <li key={i} className="flex items-center gap-3 px-5 py-3.5">
@@ -301,7 +304,7 @@ function ChangePassword() {
     event.preventDefault();
     setError("");
     if (form.new_password !== form.repeat) {
-      setError("The new password and its confirmation do not match.");
+      setError(t("The new password and its confirmation do not match."));
       return;
     }
     setBusy(true);
@@ -310,9 +313,9 @@ function ChangePassword() {
       const res = await api<{ access: string }>("/api/auth/password", { method: "POST", body: JSON.stringify({ old_password: form.old_password, new_password: form.new_password }) });
       localStorage.setItem(TOKEN_KEY, res.access);
       setForm({ old_password: "", new_password: "", repeat: "" });
-      notify.success("Password changed.");
+      notify.success(t("Password changed."));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : t("Something went wrong"));
     } finally {
       setBusy(false);
     }
@@ -321,17 +324,17 @@ function ChangePassword() {
   return (
     <form onSubmit={submit}>
       <FormSection
-        title="Change password"
-        description="After the change, every other panel session of your account is signed out."
-        footer={<Button type="submit" icon="key" disabled={busy || !form.old_password || !form.new_password || !form.repeat}>Change password</Button>}
+        title={t("Change password")}
+        description={t("After the change, every other panel session of your account is signed out.")}
+        footer={<Button type="submit" icon="key" disabled={busy || !form.old_password || !form.new_password || !form.repeat}>{t("Change password")}</Button>}
       >
         {error && <Alert>{error}</Alert>}
-        <Field label="Current password">
-          <input className={inputClass} type="password" autoComplete="current-password" value={form.old_password} onChange={(e) => setForm({ ...form, old_password: e.target.value })} />
+        <Field label={t("Current password")}>
+          <input className={inputClass} dir="ltr" type="password" autoComplete="current-password" value={form.old_password} onChange={(e) => setForm({ ...form, old_password: e.target.value })} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="New password"><input className={inputClass} type="password" autoComplete="new-password" value={form.new_password} onChange={(e) => setForm({ ...form, new_password: e.target.value })} placeholder="At least 8 characters" /></Field>
-          <Field label="Confirm new password"><input className={inputClass} type="password" autoComplete="new-password" value={form.repeat} onChange={(e) => setForm({ ...form, repeat: e.target.value })} /></Field>
+          <Field label={t("New password")}><input className={inputClass} dir="ltr" type="password" autoComplete="new-password" value={form.new_password} onChange={(e) => setForm({ ...form, new_password: e.target.value })} placeholder={t("At least 8 characters")} /></Field>
+          <Field label={t("Confirm new password")}><input className={inputClass} dir="ltr" type="password" autoComplete="new-password" value={form.repeat} onChange={(e) => setForm({ ...form, repeat: e.target.value })} /></Field>
         </div>
       </FormSection>
     </form>
@@ -368,7 +371,7 @@ function TwoFactor() {
     try {
       await task();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : t("Something went wrong"));
     } finally {
       setBusy(false);
     }
@@ -402,8 +405,8 @@ function TwoFactor() {
   };
 
   const codeInput = (
-    <Field label="Verification code" hint={enabled ? "The 6-digit code from your app, or a recovery code." : "The 6-digit code shown by your app."}>
-      <input className={`${inputClass} font-mono tracking-[0.2em]`} value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" autoComplete="one-time-code" maxLength={9} />
+    <Field label={t("Verification code")} hint={enabled ? t("The 6-digit code from your app, or a recovery code.") : t("The 6-digit code shown by your app.")}>
+      <input dir="ltr" className={`${inputClass} font-mono tracking-[0.2em]`} value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" autoComplete="one-time-code" maxLength={9} />
     </Field>
   );
 
@@ -412,12 +415,12 @@ function TwoFactor() {
       <div className="grid gap-6 p-5 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] md:p-6">
         <div>
           <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-            Two-factor authentication
+            {t("Two-factor authentication")}
             {enabled !== null && (
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${enabled ? "bg-accent/10 text-brand" : "bg-fg/[0.05] text-muted"}`}>{enabled ? "Enabled" : "Disabled"}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${enabled ? "bg-accent/10 text-brand" : "bg-fg/[0.05] text-muted"}`}>{enabled ? t("Enabled") : t("Disabled")}</span>
             )}
           </h2>
-          <p className="mt-1.5 text-xs leading-6 text-muted">After your password, a one-time code from an app such as Google Authenticator is also required.</p>
+          <p className="mt-1.5 text-xs leading-6 text-muted">{t("After your password, a one-time code from an app such as Google Authenticator is also required.")}</p>
         </div>
         <div className="min-w-0 space-y-4">
           {error && <Alert>{error}</Alert>}
@@ -426,7 +429,7 @@ function TwoFactor() {
           {codes.length > 0 && (
             <div className="rounded-lg border border-accent/30 bg-accent/[0.06] p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="text-xs text-brand">Recovery codes</span>
+                <span className="text-xs text-brand">{t("Recovery codes")}</span>
                 <Button
                   type="button"
                   tone="soft"
@@ -434,47 +437,47 @@ function TwoFactor() {
                   icon={copied ? "check" : "copy"}
                   onClick={() => navigator.clipboard.writeText(codes.join("\n")).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1400); })}
                 >
-                  Copy all
+                  {t("Copy all")}
                 </Button>
               </div>
-              <ul className="grid grid-cols-2 gap-2 font-mono text-sm sm:grid-cols-3">
+              <ul dir="ltr" className="grid grid-cols-2 gap-2 font-mono text-sm sm:grid-cols-3">
                 {codes.map((item) => <li key={item} className="rounded-md bg-bg/70 px-2.5 py-1.5 text-center text-fg">{item}</li>)}
               </ul>
-              <p className="mt-3 text-xs leading-6 text-warning/90">Store these codes somewhere safe; they are shown only once.</p>
+              <p className="mt-3 text-xs leading-6 text-warning/90">{t("Store these codes somewhere safe; they are shown only once.")}</p>
             </div>
           )}
 
           {enabled === false && !setup && (
-            <Button type="button" icon="shield" disabled={busy} onClick={start}>Enable</Button>
+            <Button type="button" icon="shield" disabled={busy} onClick={start}>{t("Enable")}</Button>
           )}
 
           {enabled === false && setup && (
             <form onSubmit={confirm} className="space-y-4">
-              <p className="text-xs leading-6 text-muted">Scan this QR code with your authenticator app or enter the key manually, then type the 6-digit code.</p>
+              <p className="text-xs leading-6 text-muted">{t("Scan this QR code with your authenticator app or enter the key manually, then type the 6-digit code.")}</p>
               <div className="flex flex-wrap items-center gap-4">
                 <div className="grid h-[200px] w-[200px] shrink-0 place-items-center overflow-hidden rounded-lg bg-white">
-                  {qr ? <img src={qr} alt="QR" width={200} height={200} /> : <Skeleton className="h-full w-full" />}
+                  {qr ? <img src={qr} alt={t("QR code")} width={200} height={200} /> : <Skeleton className="h-full w-full" />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <Field label="Key"><CopyText text={setup.secret} className="w-full" /></Field>
+                  <Field label={t("Key")}><CopyText text={setup.secret} className="w-full" /></Field>
                 </div>
               </div>
               {codeInput}
               <div className="flex gap-2">
-                <Button type="submit" icon="check" disabled={busy || !code.trim()}>Verify and enable</Button>
-                <Button type="button" tone="ghost" disabled={busy} onClick={() => { setSetup(null); setCode(""); }}>Cancel</Button>
+                <Button type="submit" icon="check" disabled={busy || !code.trim()}>{t("Verify and enable")}</Button>
+                <Button type="button" tone="ghost" disabled={busy} onClick={() => { setSetup(null); setCode(""); }}>{t("Cancel")}</Button>
               </div>
             </form>
           )}
 
           {enabled && (
             <form onSubmit={disable} className="space-y-4">
-              <p className="text-xs leading-6 text-muted">Disabling requires your password and a verification code.</p>
+              <p className="text-xs leading-6 text-muted">{t("Disabling requires your password and a verification code.")}</p>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Password"><input className={inputClass} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+                <Field label={t("Password")}><input className={inputClass} dir="ltr" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
                 {codeInput}
               </div>
-              <Button type="submit" tone="danger" icon="power" disabled={busy || !password || !code.trim()}>Disable</Button>
+              <Button type="submit" tone="danger" icon="power" disabled={busy || !password || !code.trim()}>{t("Disable")}</Button>
             </form>
           )}
         </div>

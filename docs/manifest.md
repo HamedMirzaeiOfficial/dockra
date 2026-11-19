@@ -1,5 +1,7 @@
 # The `dockra.json` manifest
 
+**English** · [فارسی](fa/manifest.md)
+
 Place it at the project root. The server reads `dockra.json`, falling back to `liara.json`, so projects using that format work unchanged. Every field except `app` is optional and the file is re-read on every deployment.
 
 ```json

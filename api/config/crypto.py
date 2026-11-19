@@ -4,6 +4,7 @@ import hashlib
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.db import models
+from config.i18n import tr
 
 PREFIX = "enc:"
 
@@ -26,7 +27,7 @@ def decrypt(value: str) -> str:
     try:
         return _fernet().decrypt(value[len(PREFIX):].encode()).decode()
     except InvalidToken as exc:
-        raise RuntimeError("Decryption failed; DOCKRA_ENCRYPTION_KEY or DJANGO_SECRET_KEY has changed") from exc
+        raise RuntimeError(tr("Decryption failed; DOCKRA_ENCRYPTION_KEY or DJANGO_SECRET_KEY has changed")) from exc
 
 
 class EncryptedTextField(models.TextField):

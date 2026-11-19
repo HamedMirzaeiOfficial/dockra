@@ -8,6 +8,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from accounts.models import ApiToken, SessionVersion
+from config.i18n import tr
 
 
 def session_version(user) -> int:
@@ -27,7 +28,7 @@ class VersionedJWTAuthentication(JWTAuthentication):
     def get_user(self, validated_token):
         user = super().get_user(validated_token)
         if int(validated_token.get("sv", 0)) != session_version(user):
-            raise AuthenticationFailed("Session expired; please sign in again")
+            raise AuthenticationFailed(tr("Session expired; please sign in again"))
         return user
 
 
@@ -52,11 +53,11 @@ class DockraAuthentication(BaseAuthentication):
             return VersionedJWTAuthentication().authenticate(request)
         token = ApiToken.objects.filter(key_hash=hash_key(raw)).select_related("user").first()
         if token is None:
-            raise AuthenticationFailed("Invalid token")
+            raise AuthenticationFailed(tr("Invalid token"))
         if not token.user.is_active:
-            raise AuthenticationFailed("Account is disabled")
+            raise AuthenticationFailed(tr("Account is disabled"))
         if token.expires_at and token.expires_at <= timezone.now():
-            raise AuthenticationFailed("Token expired; run dockra login again")
+            raise AuthenticationFailed(tr("Token expired; run dockra login again"))
         ApiToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
         return (token.user, token)
 

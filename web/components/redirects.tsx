@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { confirmAction, notify, notifyError } from "@/components/notify";
 import { Button, Empty, Field, FormSection, Toggle, inputClass, selectClass } from "@/components/ui";
 import { api } from "@/lib/api";
+import { msg, t } from "@/lib/i18n";
 
 type Redirect = {
   id: number;
@@ -18,9 +19,9 @@ type Redirect = {
 };
 
 const KINDS = [
-  { value: "domain", label: "Whole domain to another address", hint: "e.g. every page of old.example.com to example.com, keeping the path" },
-  { value: "prefix", label: "A path and everything below it", hint: "e.g. /blog/... to /news/..." },
-  { value: "exact", label: "A single page", hint: "e.g. /old.html to /new" },
+  { value: "domain", label: msg("Whole domain to another address"), hint: msg("e.g. every page of old.example.com to example.com, keeping the path") },
+  { value: "prefix", label: msg("A path and everything below it"), hint: msg("e.g. /blog/... to /news/...") },
+  { value: "exact", label: msg("A single page"), hint: msg("e.g. /old.html to /new") },
 ] as const;
 
 type Kind = (typeof KINDS)[number]["value"];
@@ -68,7 +69,7 @@ export function Redirects({ slug, hosts }: { slug: string; hosts: string[] }) {
     run(async () => {
       await api(base, { method: "POST", body: JSON.stringify(body) });
       setForm({ ...EMPTY, source_host: form.source_host });
-    }, "Redirect added.");
+    }, t("Redirect added."));
   }
 
   const kind = KINDS.find((item) => item.value === form.kind)!;
@@ -77,39 +78,39 @@ export function Redirects({ slug, hosts }: { slug: string; hosts: string[] }) {
     <div className="space-y-4">
       <form onSubmit={create}>
         <FormSection
-          title="Redirects"
-          description="Redirects are answered before the request reaches the app; the source domain does not need to be in ALLOWED_HOSTS or the app settings."
-          footer={<Button type="submit" icon="plus" disabled={busy || !form.target.trim() || (form.kind === "domain" && !form.source_host)}>Add redirect</Button>}
+          title={t("Redirects")}
+          description={t("Redirects are answered before the request reaches the app; the source domain does not need to be in ALLOWED_HOSTS or the app settings.")}
+          footer={<Button type="submit" icon="plus" disabled={busy || !form.target.trim() || (form.kind === "domain" && !form.source_host)}>{t("Add redirect")}</Button>}
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Type" hint={kind.hint}>
+            <Field label={t("Type")} hint={t(kind.hint)}>
               <select className={selectClass} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as Kind, source_path: "/" })}>
-                {KINDS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                {KINDS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}
               </select>
             </Field>
-            <Field label="Source domain">
+            <Field label={t("Source domain")}>
               <select className={selectClass} value={form.source_host} onChange={(e) => setForm({ ...form, source_host: e.target.value })}>
-                {form.kind !== "domain" && <option value="">All domains</option>}
+                {form.kind !== "domain" && <option value="">{t("All domains")}</option>}
                 {hosts.map((host) => <option key={host} value={host}>{host}</option>)}
               </select>
             </Field>
             {form.kind !== "domain" && (
-              <Field label="Source path">
-                <input className={`${inputClass} font-mono text-[13px]`} value={form.source_path} onChange={(e) => setForm({ ...form, source_path: e.target.value })} placeholder={form.kind === "exact" ? "/old.html" : "/blog"} />
+              <Field label={t("Source path")}>
+                <input className={`${inputClass} font-mono text-[13px]`} value={form.source_path} onChange={(e) => setForm({ ...form, source_path: e.target.value })} placeholder={form.kind === "exact" ? "/old.html" : "/blog"} dir="ltr" />
               </Field>
             )}
-            <Field label="Target" hint="A full URL or a path on the same domain">
-              <input className={`${inputClass} font-mono text-[13px]`} value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} placeholder={form.kind === "domain" ? "https://example.com" : "/news"} />
+            <Field label={t("Target")} hint={t("A full URL or a path on the same domain")}>
+              <input className={`${inputClass} font-mono text-[13px]`} value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} placeholder={form.kind === "domain" ? "https://example.com" : "/news"} dir="ltr" />
             </Field>
           </div>
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-sm text-fg-2">
             <label className="flex items-center gap-2">
-              <Toggle on={form.keep_path} label="Keep path and query" onChange={(on) => setForm({ ...form, keep_path: on })} />
-              {form.kind === "exact" ? "Keep query parameters (?...)" : "Keep the rest of the path and the query"}
+              <Toggle on={form.keep_path} label={t("Keep path and query")} onChange={(on) => setForm({ ...form, keep_path: on })} />
+              {form.kind === "exact" ? t("Keep query parameters (?...)") : t("Keep the rest of the path and the query")}
             </label>
             <label className="flex items-center gap-2">
-              <Toggle on={form.permanent} label="Permanent" onChange={(on) => setForm({ ...form, permanent: on })} />
-              {form.permanent ? "Permanent (301)" : "Temporary (302)"}
+              <Toggle on={form.permanent} label={t("Permanent")} onChange={(on) => setForm({ ...form, permanent: on })} />
+              {form.permanent ? t("Permanent (301)") : t("Temporary (302)")}
             </label>
           </div>
         </FormSection>
@@ -119,7 +120,7 @@ export function Redirects({ slug, hosts }: { slug: string; hosts: string[] }) {
         <ul className="divide-y divide-line/60 overflow-hidden rounded-xl border border-line bg-surface">
           {items.map((item) => (
             <li key={item.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5 text-sm">
-              <span className="min-w-0 flex-1 font-mono text-[13px]">
+              <span className="min-w-0 flex-1 font-mono text-[13px]" dir="ltr">
                 <span className="text-fg-2">{item.source_host || "*"}</span>
                 <span className="text-muted">{item.source_path}{item.match === "prefix" && item.source_path !== "/" ? "/…" : ""}</span>
                 <span className="mx-2 text-muted">→</span>
@@ -131,17 +132,18 @@ export function Redirects({ slug, hosts }: { slug: string; hosts: string[] }) {
                 disabled={busy}
                 onClick={() => run(() => api(`${base}/${item.id}`, { method: "PATCH", body: JSON.stringify({ permanent: !item.permanent }) }))}
                 className="rounded-md border border-line px-2 py-0.5 text-xs text-fg-2 hover:border-faint disabled:opacity-50"
-                title="Switch between permanent and temporary"
+                title={t("Switch between permanent and temporary")}
               >
                 {item.permanent ? "301" : "302"}
               </button>
               <button
                 type="button"
-                title="Delete redirect"
+                title={t("Delete redirect")}
+                aria-label={t("Delete redirect")}
                 disabled={busy}
                 onClick={async () => {
-                  if (!(await confirmAction({ title: "Delete this redirect?", message: `${item.source_host || "*"}${item.source_path} → ${item.target}`, confirmLabel: "Delete" }))) return;
-                  run(() => api(`${base}/${item.id}`, { method: "DELETE" }), "Redirect deleted.");
+                  if (!(await confirmAction({ title: t("Delete this redirect?"), message: `${item.source_host || "*"}${item.source_path} → ${item.target}`, confirmLabel: t("Delete") }))) return;
+                  run(() => api(`${base}/${item.id}`, { method: "DELETE" }), t("Redirect deleted."));
                 }}
                 className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger disabled:opacity-50"
               >
@@ -151,7 +153,7 @@ export function Redirects({ slug, hosts }: { slug: string; hosts: string[] }) {
           ))}
         </ul>
       ) : items ? (
-        <Empty icon="globe" title="No redirects" text="For example, send an old domain to the new one or move old page URLs to new ones." />
+        <Empty icon="globe" title={t("No redirects")} text={t("For example, send an old domain to the new one or move old page URLs to new ones.")} />
       ) : null}
     </div>
   );

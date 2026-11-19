@@ -3,12 +3,14 @@
 import { useEffect } from "react";
 import { Dots } from "@/components/loader";
 import { fmt } from "@/lib/format";
+import { t } from "@/lib/i18n";
 
-function Chevron({ dir }: { dir: "left" | "right" }) {
+/** Points back or forward in reading direction (mirrored in right-to-left layouts). */
+function Chevron({ to }: { to: "back" | "forward" }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden className="shrink-0">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden className="shrink-0 rtl:-scale-x-100">
       <path
-        d={dir === "left" ? "M10 3.5 5.5 8l4.5 4.5" : "M6 3.5 10.5 8 6 12.5"}
+        d={to === "back" ? "M10 3.5 5.5 8l4.5 4.5" : "M6 3.5 10.5 8 6 12.5"}
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
@@ -62,8 +64,8 @@ export function Wizard({
         onClick={onLeave}
         className="inline-flex items-center gap-1 text-xs text-muted transition-colors duration-150 hover:text-fg"
       >
-        <Chevron dir="right" />
-        Back
+        <Chevron to="back" />
+        {t("Back")}
       </button>
       <h1 className="mt-2 text-2xl font-bold tracking-tight">{title}</h1>
       <p className="mt-1.5 text-sm text-muted">{subtitle}</p>
@@ -128,8 +130,8 @@ export function Wizard({
             onClick={step === 0 ? onLeave : onPrev}
             className="inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2.5 text-sm text-fg transition-colors duration-150 hover:border-faint hover:text-fg"
           >
-            <Chevron dir="right" />
-            {step === 0 ? "Cancel" : "Previous"}
+            <Chevron to="back" />
+            {step === 0 ? t("Cancel") : t("Previous")}
           </button>
           <button
             type="button"
@@ -144,13 +146,13 @@ export function Wizard({
             ) : (
               <>
                 {nextLabel}
-                {!last && <Chevron dir="left" />}
+                {!last && <Chevron to="forward" />}
               </>
             )}
           </button>
         </footer>
       </section>
-      <p className="mt-3 text-center text-[11px] text-muted/70">Press Esc to leave</p>
+      <p className="mt-3 text-center text-[11px] text-muted/70">{t("Press Esc to leave")}</p>
     </div>
   );
 }
@@ -173,7 +175,7 @@ export function Pick({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`group flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.99] ${
+      className={`group flex w-full items-center gap-4 rounded-xl border p-4 text-start transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[0.99] ${
         selected ? "border-accent/80 bg-accent/[0.07]" : "border-line bg-bg/60 hover:border-faint hover:bg-bg"
       }`}
     >
@@ -181,7 +183,6 @@ export function Pick({
         className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-base font-bold transition-colors duration-150 ${
           selected ? "bg-accent text-ink" : "bg-fg/5 text-fg group-hover:bg-fg/10"
         }`}
-       
       >
         {mark}
       </span>

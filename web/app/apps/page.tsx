@@ -9,6 +9,7 @@ import { ListSkeleton } from "@/components/loader";
 import { Avatar, ButtonLink, Empty, StatusBadge, inputClass } from "@/components/ui";
 import { api, cached } from "@/lib/api";
 import { fmt, memoryLabel, relTime } from "@/lib/format";
+import { t } from "@/lib/i18n";
 
 type AppRow = {
   slug: string;
@@ -43,31 +44,31 @@ export default function AppsPage() {
     <Shell>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full sm:w-72">
-          <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input className={`${inputClass} pl-9`} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search applications…" aria-label="Search applications" />
+          <Icon name="search" size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input className={`${inputClass} ps-9`} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Search applications…")} aria-label={t("Search applications")} />
         </div>
-        <ButtonLink href="/apps/new" icon="plus">New application</ButtonLink>
+        <ButtonLink href="/apps/new" icon="plus">{t("New application")}</ButtonLink>
       </div>
 
       {rows === null && <ListSkeleton rows={4} />}
       {rows?.length === 0 && (
         <Empty
           icon="apps"
-          title="No applications yet"
-          text="Create one here, or run dockra deploy in your project folder."
-          action={<ButtonLink href="/apps/new" icon="plus">Create your first application</ButtonLink>}
+          title={t("No applications yet")}
+          text={t("Create one here, or run dockra deploy in your project folder.")}
+          action={<ButtonLink href="/apps/new" icon="plus">{t("Create your first application")}</ButtonLink>}
         />
       )}
       {rows && rows.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
           <div className={`hidden gap-4 border-b border-line/70 px-5 py-3 text-xs text-muted md:grid ${COLS}`}>
-            <span>Application</span>
-            <span>Resources</span>
-            <span>Status</span>
-            <span>Live usage</span>
+            <span>{t("Application")}</span>
+            <span>{t("Resources")}</span>
+            <span>{t("Status")}</span>
+            <span>{t("Live usage")}</span>
             <span />
           </div>
-          {shown.length === 0 && <p className="px-5 py-10 text-center text-sm text-muted">No application matches that name.</p>}
+          {shown.length === 0 && <p className="px-5 py-10 text-center text-sm text-muted">{t("No application matches that name.")}</p>}
           <ul className="divide-y divide-line/60">
             {shown.map((app) => {
               const live = app.status === "running";
@@ -92,10 +93,10 @@ export default function AppsPage() {
                     </div>
                     <div><StatusBadge status={app.status} label={app.status_label} /></div>
                     <div className={`space-y-1.5 ${live ? "" : "opacity-40"}`}>
-                      <MiniBar label="RAM" value={app.metrics.ram} />
-                      <MiniBar label="CPU" value={app.metrics.cpu} />
+                      <MiniBar label={t("RAM")} value={app.metrics.ram} />
+                      <MiniBar label={t("CPU")} value={app.metrics.cpu} />
                     </div>
-                    <Icon name="chevron" size={16} className="hidden rotate-180 text-faint transition-colors duration-150 group-hover:text-fg-2 md:block" />
+                    <Icon name="chevron" size={16} className="hidden rotate-180 text-faint rtl:rotate-0 transition-colors duration-150 group-hover:text-fg-2 md:block" />
                   </Link>
                 </li>
               );

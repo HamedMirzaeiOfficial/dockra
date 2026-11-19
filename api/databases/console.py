@@ -17,6 +17,7 @@ from databases.models import Database
 from engine import dbadmin
 from engine.actions import enqueue
 from engine.models import Job
+from config.i18n import tr
 
 ADMIN_KINDS = (Job.Kind.DB_ADMIN, Job.Kind.DB_ADMIN_STOP)
 
@@ -71,15 +72,15 @@ class DatabaseAdmin(APIView):
     def get(self, request, pk):
         database = self._database(request, pk)
         if database is None:
-            return Response({"detail": "Viewers have no access to database data"}, status=403)
+            return Response({"detail": tr("Viewers have no access to database data")}, status=403)
         return _reply(database, request)
 
     def post(self, request, pk):
         database = self._database(request, pk)
         if database is None:
-            return Response({"detail": "Viewers have no access to database data"}, status=403)
+            return Response({"detail": tr("Viewers have no access to database data")}, status=403)
         if database.status != Database.Status.RUNNING:
-            return Response({"detail": "The database is not running"}, status=400)
+            return Response({"detail": tr("The database is not running")}, status=400)
         base = dbadmin.public_base(request)
         state = _state(database, request)
         Database.objects.filter(pk=database.pk).update(admin_until=timezone.now() + _idle())
@@ -92,7 +93,7 @@ class DatabaseAdmin(APIView):
     def delete(self, request, pk):
         database = self._database(request, pk)
         if database is None:
-            return Response({"detail": "Viewers have no access to database data"}, status=403)
+            return Response({"detail": tr("Viewers have no access to database data")}, status=403)
         Database.objects.filter(pk=database.pk).update(admin_until=None)
         enqueue(Job.Kind.DB_ADMIN_STOP, {"database_id": database.id}, request.user, database.organization)
         return Response(status=204)

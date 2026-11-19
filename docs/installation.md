@@ -1,5 +1,7 @@
 # Installation and operations
 
+**English** · [فارسی](fa/installation.md)
+
 ## Requirements
 
 | Item | Minimum |

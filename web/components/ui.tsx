@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Icon, IconName } from "@/components/icons";
+import { t } from "@/lib/i18n";
 
 /*
  * Dockra UI primitives. Every color comes from the design tokens in app/globals.css, so components
@@ -61,7 +62,7 @@ export function PageHeader({
     <header className="mb-8">
       {back && (
         <Link href={back.href} className="mb-3 inline-flex items-center gap-1 text-xs text-muted transition-colors duration-150 hover:text-fg">
-          <Icon name="chevron" size={14} />
+          <Icon name="chevron" size={14} className="rtl:rotate-180" />
           {back.label}
         </Link>
       )}
@@ -188,7 +189,7 @@ export function Choice({
 export const inputClass =
   "h-10 w-full rounded-lg border border-line bg-field px-3.5 text-sm text-fg outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-faint hover:border-faint disabled:cursor-not-allowed disabled:text-muted";
 
-export const selectClass = `${inputClass} appearance-none bg-[length:12px_8px] bg-[position:right_0.9rem_center] bg-no-repeat pe-10`;
+export const selectClass = `${inputClass} appearance-none bg-[length:12px_8px] bg-[position:right_0.9rem_center] bg-no-repeat pe-10 rtl:bg-[position:left_0.9rem_center]`;
 
 export type Tone = "primary" | "ghost" | "danger" | "soft";
 
@@ -359,7 +360,7 @@ export function Toggle({ on, onChange, disabled, label }: { on: boolean; onChang
       onClick={() => onChange(!on)}
       className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-150 disabled:opacity-50 ${on ? "bg-accent" : "bg-fg/15"}`}
     >
-      <span className={`h-4 w-4 rounded-full bg-white shadow transition-transform duration-150 ${on ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+      <span className={`h-4 w-4 rounded-full bg-white shadow transition-transform duration-150 ${on ? "translate-x-[18px] rtl:-translate-x-[18px]" : "translate-x-0.5 rtl:-translate-x-0.5"}`} />
     </button>
   );
 }
@@ -370,7 +371,7 @@ export function KeyValue({ rows }: { rows: [string, React.ReactNode][] }) {
       {rows.map(([key, value]) => (
         <div key={key} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
           <dt className="shrink-0 text-muted">{key}</dt>
-          <dd className="min-w-0 truncate text-right font-medium">{value}</dd>
+          <dd className="min-w-0 truncate text-end font-medium">{value}</dd>
         </div>
       ))}
     </dl>
@@ -403,11 +404,11 @@ export function CopyText({ text, className = "" }: { text: string; className?: s
           setTimeout(() => setDone(false), 1400);
         });
       }}
-      className={`group inline-flex min-w-0 max-w-full items-center gap-2 rounded-lg border border-line bg-field px-3 py-2 text-left font-mono text-xs text-fg-2 transition-colors duration-150 hover:border-faint ${className}`}
-      title="Copy"
-      aria-label={done ? "Copied" : `Copy ${text}`}
+      className={`group inline-flex min-w-0 max-w-full items-center gap-2 rounded-lg border border-line bg-field px-3 py-2 text-start font-mono text-xs text-fg-2 transition-colors duration-150 hover:border-faint ${className}`}
+      title={t("Copy")}
+      aria-label={done ? t("Copied") : t("Copy {text}", { text })}
     >
-      <span className="min-w-0 truncate">{text}</span>
+      <span className="min-w-0 truncate" dir="ltr">{text}</span>
       <Icon name={done ? "check" : "copy"} size={14} className={done ? "text-success" : "text-muted group-hover:text-fg"} />
     </button>
   );
@@ -415,5 +416,5 @@ export function CopyText({ text, className = "" }: { text: string; className?: s
 
 /** Inline monospace token, e.g. a hostname or an env key. */
 export function Code({ children }: { children: React.ReactNode }) {
-  return <code className="rounded-md bg-fg/[0.06] px-1.5 py-0.5 font-mono text-[0.85em] text-fg-2">{children}</code>;
+  return <code dir="ltr" className="rounded-md bg-fg/[0.06] px-1.5 py-0.5 font-mono text-[0.85em] text-fg-2">{children}</code>;
 }

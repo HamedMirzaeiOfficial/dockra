@@ -6,6 +6,7 @@ import { confirmAction, notifyError } from "@/components/notify";
 import { Alert, Button, Card, CardHeader } from "@/components/ui";
 import { api, download, uploadInPieces } from "@/lib/api";
 import { bytesLabel, relTime } from "@/lib/format";
+import { t } from "@/lib/i18n";
 
 type Entry = { name: string; type: "file" | "dir"; size: number; modified: string };
 
@@ -46,13 +47,13 @@ export function DiskFiles({ slug, disk, mount }: { slug: string; disk: string; m
   return (
     <Card className="overflow-hidden">
       <CardHeader
-        title={`Files · ${disk}`}
+        title={t("Files · {disk}", { disk })}
         icon="folder"
-        description={`Files on the disk mounted at ${mount}.`}
+        description={t("Files on the disk mounted at {path}.", { path: mount })}
         action={
           <label className={`inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-fg/[0.06] px-3 text-xs font-medium text-fg transition-colors duration-150 hover:bg-fg/10 ${busy ? "pointer-events-none opacity-50" : ""}`}>
             <Icon name="upload" size={14} />
-            Upload file
+            {t("Upload file")}
             <input
               type="file"
               className="hidden"
@@ -71,7 +72,7 @@ export function DiskFiles({ slug, disk, mount }: { slug: string; disk: string; m
           </label>
         }
       />
-      <nav className="flex flex-wrap items-center gap-1 border-b border-line/70 px-5 py-2.5 font-mono text-xs">
+      <nav dir="ltr" className="flex flex-wrap items-center gap-1 border-b border-line/70 px-5 py-2.5 font-mono text-xs">
         <button type="button" onClick={() => run("nav", () => load("/"))} className="rounded px-1.5 py-0.5 text-fg-2 hover:bg-fg/[0.05] hover:text-brand">
           {disk}
         </button>
@@ -90,9 +91,9 @@ export function DiskFiles({ slug, disk, mount }: { slug: string; disk: string; m
       </nav>
       {error && <div className="px-5 pt-4"><Alert>{error}</Alert></div>}
       {entries === null ? (
-        <p className="px-5 py-8 text-center text-sm text-muted">Reading…</p>
+        <p className="px-5 py-8 text-center text-sm text-muted">{t("Reading…")}</p>
       ) : entries.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-muted">This folder is empty.</p>
+        <p className="px-5 py-8 text-center text-sm text-muted">{t("This folder is empty.")}</p>
       ) : (
         <ul className="divide-y divide-line/60">
           {entries.map((item) => {
@@ -100,7 +101,7 @@ export function DiskFiles({ slug, disk, mount }: { slug: string; disk: string; m
             return (
               <li key={item.name} className="flex items-center gap-3 px-5 py-2.5 text-sm">
                 {item.type === "dir" ? (
-                  <button type="button" onClick={() => run("nav", () => load(full))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left hover:text-brand">
+                  <button type="button" onClick={() => run("nav", () => load(full))} className="flex min-w-0 flex-1 items-center gap-2.5 text-start hover:text-brand">
                     <Icon name="folder" size={16} className="text-brand" />
                     <span className="truncate font-medium">{item.name}</span>
                   </button>
@@ -118,7 +119,7 @@ export function DiskFiles({ slug, disk, mount }: { slug: string; disk: string; m
                     tone="ghost"
                     size="sm"
                     icon="download"
-                    title={item.type === "dir" ? "Download as tar.gz" : "Download"}
+                    title={item.type === "dir" ? t("Download as tar.gz") : t("Download")}
                     disabled={!!busy}
                     onClick={() => run(`dl-${item.name}`, () => download(`${base}/download?path=${encodeURIComponent(full)}`, item.type === "dir" ? `${item.name}.tar.gz` : item.name))}
                   />
@@ -127,10 +128,10 @@ export function DiskFiles({ slug, disk, mount }: { slug: string; disk: string; m
                     tone="danger"
                     size="sm"
                     icon="trash"
-                    title="Delete"
+                    title={t("Delete")}
                     disabled={!!busy}
                     onClick={async () => {
-                      if (!(await confirmAction({ title: `Delete "${item.name}"?`, message: "This file or folder is permanently removed from the disk.", confirmLabel: "Delete" }))) return;
+                      if (!(await confirmAction({ title: t("Delete \"{name}\"?", { name: item.name }), message: t("This file or folder is permanently removed from the disk."), confirmLabel: t("Delete") }))) return;
                       run(`rm-${item.name}`, async () => {
                         await api(`${base}/files?path=${encodeURIComponent(full)}`, { method: "DELETE" });
                         await load();

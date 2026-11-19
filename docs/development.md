@@ -1,5 +1,7 @@
 # Development
 
+**English** · [فارسی](fa/development.md)
+
 ## Prerequisites
 
 - Python 3.12, Node.js 20+ (22 recommended), Git
@@ -62,12 +64,13 @@ Then run the dashboard with `npm run dev` as above, pointing `NEXT_PUBLIC_API_UR
 
 ```bash
 cd api
-python manage.py test                                   # 168 tests, ~2 minutes, no Docker needed
+python manage.py test                                   # 179 tests, ~2 minutes, no Docker needed
 python manage.py makemigrations --check --dry-run       # models and migrations in sync
 cd .. && ruff check api cli                             # lint (configuration in pyproject.toml)
 
 cd web
 npx tsc --noEmit                                        # types
+npm run i18n:check                                      # every panel string has a Persian entry
 npx next build                                          # production build
 ```
 
@@ -76,6 +79,7 @@ UI smoke test and screenshots (needs a running API with `seed_demo` data and a r
 ```bash
 npm i -D playwright@1.49 && npx playwright install chromium
 PANEL_URL=http://127.0.0.1:3000 node e2e/screenshots.cjs ../docs/screenshots dark       # fails on any console error
+PANEL_LANG=fa PANEL_URL=http://127.0.0.1:3000 node e2e/screenshots.cjs ../docs/screenshots dark   # Persian panel (*-fa.png)
 ```
 
 End to end on real Docker (installs the stack, deploys, redeploys without downtime, rolls back, creates a database and a backup, simulates an isolated network, then removes everything):
@@ -94,9 +98,40 @@ sudo deploy/e2e.sh
 | `engine/test_hardening.py` | throttling, trusted proxies, disk backups and restore safety, mounts, metrics math |
 | `engine/test_features.py` | incremental upload, webhooks, build templates, mirrors, domain checks, SSRF guards |
 | `engine/test_validation.py` | disk and redirect validation |
+| `engine/test_i18n.py` | response language from `Accept-Language`, Persian labels, CLI page direction, every API message translated |
 | `engine/test_import.py`, `test_disk_import.py`, `test_backups.py`, `test_dbadmin.py`, `test_logs.py`, `test_sharing.py`, `test_mirrors.py`, `test_db_observe.py` | feature-specific suites |
 
 Tests never depend on the machine they run on: capacity is overridden with `DOCKRA_HOST_*`, and disk-space reserves with `DOCKRA_RESERVED_DISK_GB=0` where a test needs it.
+
+## Translations (English and Persian)
+
+Both the panel and the API use the same small model: **the English text is the key**, and a Persian dictionary maps it to its translation. A missing entry falls back to readable English, never to a raw key.
+
+**Panel** (`web/`):
+
+```tsx
+import { msg, t } from "@/lib/i18n";
+
+<Button>{t("Deploy")}</Button>
+<p>{t("{n} files transferred.", { n: fmt(count) })}</p>
+const TABS = [["logs", msg("Logs")]];   // msg() marks a constant; render it with t(label)
+```
+
+Add the Persian text to the matching file in `web/lib/locales/fa/` (`common`, `apps`, `databases`, `platform`) and run `npm run i18n:check`; `--report` also lists JSX text that is not wrapped in `t()` yet. Rules:
+
+- Never build a sentence from pieces (`"Deleted " + name`); use one key with a placeholder, because word order differs between languages.
+- Numbers and dates go through `fmt()`, `relTime()` and `dateTime()` from `lib/format.ts`; they switch to Persian digits and the Solar Hijri calendar.
+- Use logical Tailwind classes (`ms-`, `pe-`, `start-`, `text-end`) instead of `ml-`, `pr-`, `left-`, `text-right`, and mark technical values (hostnames, paths, commands, logs) with `dir="ltr"`.
+
+**API** (`api/`):
+
+```python
+from config.i18n import tr
+
+return Response({"detail": tr("Disk {name} is full", name=disk.name)}, status=400)
+```
+
+Persian entries live in `api/config/locale/fa.json`; `python manage.py i18n_check` (also part of the test suite) fails when one is missing. Model choice labels are translated where they are presented (`tr(obj.get_status_display())`). Work done by the worker has no request and stays English.
 
 ## Migrations
 

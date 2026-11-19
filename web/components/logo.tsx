@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { t } from "@/lib/i18n";
 
 /** Dockra mark: a "D" whose counter holds an upward chevron — code going up to the cloud. */
 export function LogoMark({ size = 28, className = "" }: { size?: number; className?: string }) {
@@ -24,7 +25,7 @@ export function Wordmark({ tagline = false }: { tagline?: boolean }) {
       <LogoMark />
       <span className="leading-tight">
         <span className="block text-[15px] font-semibold tracking-tight text-fg">Dockra</span>
-        {tagline && <span className="block text-[11px] text-muted">From code to cloud.</span>}
+        {tagline && <span className="block text-[11px] text-muted">{t("From code to cloud.")}</span>}
       </span>
     </span>
   );

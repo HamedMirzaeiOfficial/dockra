@@ -14,6 +14,7 @@ import tarfile
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit
+from config.i18n import tr
 
 HEAD_BYTES = 1 << 20
 MONGO_MAGIC = b"\x6d\xe2\x99\x81"
@@ -44,7 +45,7 @@ def _raw_head(path: Path, size: int) -> bytes:
                 out += chunk
     except (OSError, EOFError):
         if not out:
-            raise DumpError("The gzip file is corrupt")
+            raise DumpError(tr("The gzip file is corrupt"))
     return out
 
 
@@ -63,8 +64,8 @@ def head(path: Path, size: int = HEAD_BYTES) -> bytes:
                 if member.isfile():
                     return tar.extractfile(member).read(size)
     except (tarfile.TarError, OSError, EOFError) as exc:
-        raise DumpError(f"The tar archive is corrupt: {exc}") from exc
-    raise DumpError("The tar archive is empty")
+        raise DumpError(tr("The tar archive is corrupt: {exc}", exc=exc)) from exc
+    raise DumpError(tr("The tar archive is empty"))
 
 
 def unwrap(path: Path) -> None:
@@ -76,12 +77,12 @@ def unwrap(path: Path) -> None:
         with tarfile.open(path, "r:*") as tar:
             files = [m for m in tar if m.isfile()]
             if len(files) != 1:
-                raise DumpError("The tar archive must contain exactly one backup file")
+                raise DumpError(tr("The tar archive must contain exactly one backup file"))
             with tar.extractfile(files[0]) as reader, inner.open("wb") as writer:
                 shutil.copyfileobj(reader, writer, 1 << 20)
     except (tarfile.TarError, OSError, EOFError) as exc:
         inner.unlink(missing_ok=True)
-        raise DumpError(f"The tar archive is corrupt: {exc}") from exc
+        raise DumpError(tr("The tar archive is corrupt: {exc}", exc=exc)) from exc
     except BaseException:
         inner.unlink(missing_ok=True)
         raise
@@ -151,7 +152,7 @@ def detect(path: Path) -> dict:
         return {"engine": engine, "version": version, "format": "SQL (mysqldump)"}
     if b"PostgreSQL database" in text or b"pg_dump" in text or b"SET client_encoding" in text or b"pg_catalog." in text:
         return {"engine": "postgres", "version": _pg_version(_postgres_major(data)), "format": "SQL (pg_dump)"}
-    raise DumpError("Unrecognized file format; specify the engine with --engine")
+    raise DumpError(tr("Unrecognized file format; specify the engine with --engine"))
 
 
 def needs_newer(engine: str, wanted: str, detected: str) -> bool:
@@ -173,18 +174,18 @@ def ensure_public(host: str) -> None:
     try:
         infos = socket.getaddrinfo(host, None)
     except socket.gaierror as exc:
-        raise DumpError(f"Could not resolve {host}") from exc
+        raise DumpError(tr("Could not resolve {host}", host=host)) from exc
     for info in infos:
         address = ipaddress.ip_address(info[4][0].split("%", 1)[0])
         if not address.is_global:
             # The worker sits on the panel's internal network; never follow internal addresses (SSRF).
-            raise DumpError("Internal or private addresses are not allowed")
+            raise DumpError(tr("Internal or private addresses are not allowed"))
 
 
 def check_url(url: str) -> None:
     parts = urlsplit(url)
     if parts.scheme not in ("http", "https") or not parts.hostname:
-        raise DumpError("The URL must be http or https")
+        raise DumpError(tr("The URL must be http or https"))
     ensure_public(parts.hostname)
 
 
@@ -215,8 +216,8 @@ def download(url: str, dest: Path, on_progress=None) -> int:
         raise
     except OSError as exc:
         dest.unlink(missing_ok=True)
-        raise DumpError(f"Download failed: {exc}") from exc
+        raise DumpError(tr("Download failed: {exc}", exc=exc)) from exc
     if total == 0:
         dest.unlink(missing_ok=True)
-        raise DumpError("The downloaded file is empty")
+        raise DumpError(tr("The downloaded file is empty"))
     return total

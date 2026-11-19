@@ -41,6 +41,8 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # Picks the response language from Accept-Language (the panel sends its own language).
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -95,7 +97,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
+# Messages the API returns (errors, status labels) exist in English and Persian; see config/i18n.py.
+LANGUAGES = [("en", "English"), ("fa", "Persian")]
 TIME_ZONE = os.environ.get("DOCKRA_TIME_ZONE", "UTC")  # also the timezone of cron schedules
 USE_I18N = True
 USE_TZ = True

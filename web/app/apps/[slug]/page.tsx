@@ -32,7 +32,8 @@ import {
   selectClass,
 } from "@/components/ui";
 import { ApiError, BASE, api, authHeaders, cached } from "@/lib/api";
-import { bytesLabel, fmt, memoryLabel, relTime } from "@/lib/format";
+import { bytesLabel, fmt, memoryLabel, pct, relTime } from "@/lib/format";
+import { intlLocale, msg, t } from "@/lib/i18n";
 
 type Traffic = { requests_per_min: number; errors_5xx_per_min: number; error_rate: number; avg_ms: number | null; p95_ms: number | null };
 type Metrics = { cpu: number; cpu_cores: number; cpu_burst: number; ram: number; memory_mb: number; network_mbps: number; instances: number } & Partial<Traffic>;
@@ -62,7 +63,7 @@ function DnsHint({ slug, domain }: { slug: string; domain: Domain }) {
     try {
       setCheck(await api<DnsCheck>(`/api/apps/${slug}/domains/${domain.id}/check`));
     } catch (err) {
-      setCheck({ state: "mismatch", message: err instanceof Error ? err.message : "Something went wrong", found: [], expected: "" });
+      setCheck({ state: "mismatch", message: err instanceof Error ? err.message : t("Something went wrong"), found: [], expected: "" });
     } finally {
       setChecking(false);
     }
@@ -70,24 +71,23 @@ function DnsHint({ slug, domain }: { slug: string; domain: Domain }) {
   return (
     <details open={domain.ssl_status !== "active"} className="group col-span-full rounded-lg border border-line/70 bg-bg/40 text-sm">
       <summary className="cursor-pointer select-none px-4 py-2.5 text-xs text-muted hover:text-fg">
-        DNS record to create at your DNS provider
+        {t("DNS record to create at your DNS provider")}
       </summary>
       <div className="space-y-3 border-t border-line/60 px-4 py-3">
         <p className="text-xs leading-6 text-muted">
-          In your DNS provider, open the zone <span className="font-mono text-fg-2">{zone}</span> and create this record.
-          Keep any CDN proxy (e.g. Cloudflare's orange cloud) disabled so the SSL certificate can be issued.
+          {t("In your DNS provider, open the zone {zone} and create this record. Keep any CDN proxy (e.g. Cloudflare's orange cloud) disabled so the SSL certificate can be issued.", { zone: zone ?? "" })}
         </p>
         {domain.dns.map((rec) => (
           <div key={rec.fqdn} className="grid gap-2 sm:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)_4rem]">
-            <Field label="Type"><CopyText text={rec.type} className="w-full" /></Field>
-            <Field label="Name"><CopyText text={rec.name} className="w-full" /></Field>
-            <Field label="Value (server IP)"><CopyText text={rec.value} className="w-full" /></Field>
-            <Field label="TTL"><CopyText text={String(rec.ttl)} className="w-full" /></Field>
+            <Field label={t("Type")}><CopyText text={rec.type} className="w-full" /></Field>
+            <Field label={t("Name")}><CopyText text={rec.name} className="w-full" /></Field>
+            <Field label={t("Value (server IP)")}><CopyText text={rec.value} className="w-full" /></Field>
+            <Field label={t("TTL")}><CopyText text={String(rec.ttl)} className="w-full" /></Field>
           </div>
         ))}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Button type="button" tone="ghost" size="sm" icon="search" disabled={checking} onClick={verify} className="shrink-0">
-            {checking ? "Checking…" : "Check record"}
+            {checking ? t("Checking…") : t("Check record")}
           </Button>
           {check && <span className={`rounded-lg border px-3 py-2 text-xs ${CHECK_TONE[check.state]}`}>{check.message}</span>}
         </div>
@@ -142,45 +142,44 @@ const SECTIONS = ["overview", "deploy", "history", "reports", "logs", "terminal"
 type Section = (typeof SECTIONS)[number];
 
 const MENU: SideItem<Section>[] = [
-  { id: "overview", label: "Overview", icon: "info" },
-  { id: "deploy", label: "Deploy", icon: "rocket" },
-  { id: "history", label: "Deployments", icon: "history" },
-  { id: "reports", label: "Metrics", icon: "chart" },
-  { id: "logs", label: "Logs", icon: "terminal" },
-  { id: "terminal", label: "Terminal", icon: "terminal" },
-  { id: "console", label: "Console", icon: "terminal" },
-  { id: "disks", label: "Disks", icon: "disk" },
-  { id: "domains", label: "Domains", icon: "globe" },
-  { id: "env", label: "Variables", icon: "key" },
-  { id: "resize", label: "Resources", icon: "resize" },
-  { id: "settings", label: "Settings", icon: "settings" },
+  { id: "overview", label: msg("Overview"), icon: "info" },
+  { id: "deploy", label: msg("Deploy"), icon: "rocket" },
+  { id: "history", label: msg("Deployments"), icon: "history" },
+  { id: "reports", label: msg("Metrics"), icon: "chart" },
+  { id: "logs", label: msg("Logs"), icon: "terminal" },
+  { id: "terminal", label: msg("Terminal"), icon: "terminal" },
+  { id: "console", label: msg("Console"), icon: "terminal" },
+  { id: "disks", label: msg("Disks"), icon: "disk" },
+  { id: "domains", label: msg("Domains"), icon: "globe" },
+  { id: "env", label: msg("Variables"), icon: "key" },
+  { id: "resize", label: msg("Resources"), icon: "resize" },
+  { id: "settings", label: msg("Settings"), icon: "settings" },
 ];
 
 const PLANS = [
-  { value: "0.25/256", label: "Small", hint: "0.25 vCPU · 256 MB" },
-  { value: "0.5/512", label: "Medium", hint: "0.5 vCPU · 512 MB" },
-  { value: "1/1024", label: "Large", hint: "1 vCPU · 1 GB" },
-  { value: "2/2048", label: "X-Large", hint: "2 vCPU · 2 GB" },
+  { value: "0.25/256", label: msg("Small"), hint: "0.25 vCPU · 256 MB" },
+  { value: "0.5/512", label: msg("Medium"), hint: "0.5 vCPU · 512 MB" },
+  { value: "1/1024", label: msg("Large"), hint: "1 vCPU · 1 GB" },
+  { value: "2/2048", label: msg("X-Large"), hint: "2 vCPU · 2 GB" },
 ];
 
 const PLATFORMS = [
   { value: "django", label: "Python / Django" },
   { value: "node", label: "Node.js" },
   { value: "nextjs", label: "Next.js" },
-  { value: "static", label: "Static site" },
-  { value: "docker", label: "Docker (your own Dockerfile)" },
+  { value: "static", label: msg("Static site") },
+  { value: "docker", label: msg("Docker (your own Dockerfile)") },
 ];
-
 
 // Live log buffer cap; older lines fall off the top.
 const LOG_LINES = 2000;
 
 const ENV_TABS = [
-  ["rows", "Edit"],
-  ["paste", "COPY / PASTE"],
-  ["file", "Upload .env file"],
-  ["ready", "Presets"],
-  ["import", "Paste .env"],
+  ["rows", msg("Edit")],
+  ["paste", msg("COPY / PASTE")],
+  ["file", msg("Upload .env file")],
+  ["ready", msg("Presets")],
+  ["import", msg("Paste .env")],
 ] as const;
 
 function parseEnv(text: string): EnvItem[] {
@@ -215,11 +214,11 @@ function duration(start: string, end: string | null) {
   if (!end) return "—";
   const sec = Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000));
   const m = Math.floor(sec / 60);
-  return m ? `${fmt(m)}m ${fmt(sec % 60)}s` : `${fmt(sec)}s`;
+  return m ? t("{m}m {s}s", { m: fmt(m), s: fmt(sec % 60) }) : t("{s}s", { s: fmt(sec) });
 }
 
 function stamp(value: string | null) {
-  return value ? new Date(value).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "—";
+  return value ? new Date(value).toLocaleString(intlLocale(), { dateStyle: "medium", timeStyle: "short" }) : "—";
 }
 
 export default function AppPage() {
@@ -244,7 +243,7 @@ export default function AppPage() {
   const logBox = useRef<HTMLPreElement>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
-  const [message, setMessage] = useState("Manual deploy");
+  const [message, setMessage] = useState(() => t("Manual deploy"));
   const [envRows, setEnvRows] = useState<EnvItem[]>(() => app?.env ?? []);
   const [envTab, setEnvTab] = useState<(typeof ENV_TABS)[number][0]>("rows");
   const [paste, setPaste] = useState("");
@@ -343,13 +342,13 @@ export default function AppPage() {
           else feed(decoder.decode(event.data as ArrayBuffer, { stream: true }));
           return;
         }
-        let msg: { type?: string; detail?: string } | null = null;
+        let frame: { type?: string; detail?: string } | null = null;
         try {
-          msg = JSON.parse(event.data);
+          frame = JSON.parse(event.data);
         } catch {
           return;
         }
-        if (msg?.type === "error" && msg.detail) push([`[${msg.detail}]`]);
+        if (frame?.type === "error" && frame.detail) push([`[${frame.detail}]`]);
       };
       // "exit" (container stopped or replaced) and drops both end in a close; reconnect with a new ticket.
       socket.onclose = () => {
@@ -387,7 +386,7 @@ export default function AppPage() {
 
   const archiveTitle = (name: string) => {
     const item = archives?.find((a) => a.name === name);
-    return item ? `Release ${item.release}` : name;
+    return item ? t("Release {version}", { version: item.release }) : name;
   };
 
   // Archived logs are plain text, so they skip api()'s JSON parsing.
@@ -397,7 +396,7 @@ export default function AppPage() {
       const res = await fetch(`${BASE}/api/apps/${slug}/logs/archive/${encodeURIComponent(name)}`, { headers: authHeaders() });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(typeof data?.detail === "string" ? data.detail : "Could not load the log");
+        throw new Error(typeof data?.detail === "string" ? data.detail : t("Could not load the log"));
       }
       const text = await res.text();
       setViewing((prev) => (prev?.name === name ? { ...prev, text } : prev));
@@ -475,7 +474,7 @@ export default function AppPage() {
 
   const live = app.status === "running";
   const diskTotal = app.disks.reduce((sum, item) => sum + item.size_gb, 0);
-  const label = MENU.find((item) => item.id === tab)?.label || "";
+  const label = t(MENU.find((item) => item.id === tab)?.label || "");
   const planKey = `${Number(plan.cpu)}/${Number(plan.memory_mb)}`;
   const hookOn = hook ? hook.enabled : app.webhook_enabled;
 
@@ -491,11 +490,11 @@ export default function AppPage() {
 
   const pipeline = (
     <Card>
-      <CardHeader title="Deployment pipeline" icon="rocket" />
+      <CardHeader title={t("Deployment pipeline")} icon="rocket" />
       <ol className="px-5 py-4">
         {(app.pipeline || []).map((step, index, all) => (
           <li key={step.key} className="relative flex gap-3 pb-5 last:pb-0">
-            {index < all.length - 1 && <span className={`absolute left-[11px] top-6 h-[calc(100%-1.25rem)] w-px ${step.state === "done" ? "bg-accent/40" : "bg-line"}`} />}
+            {index < all.length - 1 && <span className={`absolute start-[11px] top-6 h-[calc(100%-1.25rem)] w-px ${step.state === "done" ? "bg-accent/40" : "bg-line"}`} />}
             <StepDot state={step.state} />
             <div className="min-w-0 pt-0.5">
               <div className="text-sm font-medium">{step.label}</div>
@@ -512,7 +511,7 @@ export default function AppPage() {
       <SectionHead
         title={label}
         description={<span><bdi>{app.name}</bdi> · <bdi>{app.platform_label}{app.runtime ? ` ${app.runtime}` : ""}</bdi> · {app.region_label}</span>}
-        actions={tab !== "deploy" && <Button type="button" icon="rocket" size="sm" disabled={!!busy} onClick={() => act("deploy", `/api/apps/${slug}/deploy`, { message }, "Deployment queued.")}>Deploy</Button>}
+        actions={tab !== "deploy" && <Button type="button" icon="rocket" size="sm" disabled={!!busy} onClick={() => act("deploy", `/api/apps/${slug}/deploy`, { message }, t("Deployment queued."))}>{t("Deploy")}</Button>}
       />
       {error && <Alert>{error}</Alert>}
 
@@ -530,24 +529,24 @@ export default function AppPage() {
                   <button
                     type="button"
                     disabled={!!busy}
-                    onClick={() => act("restart", `/api/apps/${slug}/restart`, undefined, "Application restarted.")}
-                    className="flex h-11 items-center justify-center gap-2 border-l border-line/70 text-[13px] text-fg transition-colors duration-150 hover:bg-fg/[0.04] disabled:opacity-50"
+                    onClick={() => act("restart", `/api/apps/${slug}/restart`, undefined, t("Application restarted."))}
+                    className="flex h-11 items-center justify-center gap-2 border-s border-line/70 text-[13px] text-fg transition-colors duration-150 hover:bg-fg/[0.04] disabled:opacity-50"
                   >
                     <Icon name="restart" size={15} />
-                    Restart
+                    {t("Restart")}
                   </button>
                   <button
                     type="button"
                     disabled={!!busy}
-                    onClick={() => (live ? act("stop", `/api/apps/${slug}/stop`, undefined, "Application stopped.") : act("start", `/api/apps/${slug}/start`, undefined, "Application started."))}
+                    onClick={() => (live ? act("stop", `/api/apps/${slug}/stop`, undefined, t("Application stopped.")) : act("start", `/api/apps/${slug}/start`, undefined, t("Application started.")))}
                     className="flex h-11 items-center justify-center gap-2 text-[13px] text-fg transition-colors duration-150 hover:bg-fg/[0.04] disabled:opacity-50"
                   >
                     <Icon name="power" size={15} />
-                    {live ? "Stop" : "Start"}
+                    {live ? t("Stop") : t("Start")}
                   </button>
                 </div>
                 <div className="flex items-center justify-between px-5 py-3.5 text-sm">
-                  <span className="text-muted">Status</span>
+                  <span className="text-muted">{t("Status")}</span>
                   <StatusBadge status={app.status} label={app.status_label} />
                 </div>
               </Card>
@@ -560,33 +559,33 @@ export default function AppPage() {
                   {app.domains.slice(0, 3).map((item) => (
                     <a key={item.id} href={`http://${item.hostname}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-fg-2 hover:text-brand">
                       <Icon name="globe" size={15} className="text-muted" />
-                      <span className="truncate">{item.hostname}</span>
+                      <span className="truncate" dir="ltr">{item.hostname}</span>
                       <Icon name="external" size={13} className="text-muted" />
                     </a>
                   ))}
                 </div>
               )}
               <div className="grid grid-cols-3 gap-3">
-                <SpecBox icon="cpu" label="CPU" value={`${fmt(app.cpu)} vCPU`} />
-                <SpecBox icon="memory" label="RAM" value={memoryLabel(app.memory_mb)} />
-                <SpecBox icon="disk" label="Disk" value={diskTotal ? `${fmt(diskTotal)} GB` : "—"} />
+                <SpecBox icon="cpu" label={t("CPU")} value={`${fmt(app.cpu)} vCPU`} />
+                <SpecBox icon="memory" label={t("RAM")} value={memoryLabel(app.memory_mb)} />
+                <SpecBox icon="disk" label={t("Disk")} value={diskTotal ? t("{n} GB", { n: fmt(diskTotal) }) : "—"} />
               </div>
               {app.metrics.requests_per_min !== undefined && (
                 <div className="grid grid-cols-2 gap-3">
-                  <MiniStat icon="activity" label="Requests / min" value={fmt(rounded(app.metrics.requests_per_min))} />
-                  <MiniStat icon="clock" label="p95 response time" value={msLabel(app.metrics.p95_ms)} unit={app.metrics.p95_ms == null ? undefined : "ms"} />
+                  <MiniStat icon="activity" label={t("Requests / min")} value={fmt(rounded(app.metrics.requests_per_min))} />
+                  <MiniStat icon="clock" label={t("p95 response time")} value={msLabel(app.metrics.p95_ms)} unit={app.metrics.p95_ms == null ? undefined : t("ms")} />
                 </div>
               )}
               <Card>
                 <KeyValue
                   rows={[
-                    ["Platform", app.platform_label],
-                    ["Runtime", app.runtime || "—"],
-                    ["Port", <span key="port">{app.port}</span>],
-                    ["Region", app.region_label],
-                    ["Image", <span key="img" className="font-mono text-xs">{app.current_image || "—"}</span>],
-                    ["Source", app.git_url ? <span key="git" className="font-mono text-xs">{app.git_url}{app.git_branch ? ` @ ${app.git_branch}` : ""}</span> : "Uploaded from the CLI"],
-                    ["Last deployment", deployments[0] ? <><bdi>{deployments[0].version}</bdi> · {relTime(deployments[0].created_at)}</> : "—"],
+                    [t("Platform"), app.platform_label],
+                    [t("Runtime"), app.runtime || "—"],
+                    [t("Port"), <span key="port">{app.port}</span>],
+                    [t("Region"), app.region_label],
+                    [t("Image"), <span key="img" dir="ltr" className="font-mono text-xs">{app.current_image || "—"}</span>],
+                    [t("Source"), app.git_url ? <span key="git" dir="ltr" className="font-mono text-xs">{app.git_url}{app.git_branch ? ` @ ${app.git_branch}` : ""}</span> : t("Uploaded from the CLI")],
+                    [t("Last deployment"), deployments[0] ? <><bdi>{deployments[0].version}</bdi> · {relTime(deployments[0].created_at)}</> : "—"],
                   ]}
                 />
               </Card>
@@ -598,22 +597,22 @@ export default function AppPage() {
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]">
             <div className="space-y-5">
               <Card>
-                <CardHeader title="From the command line" icon="terminal" description="Run this in your project folder; the source is packed and uploaded." />
+                <CardHeader title={t("From the command line")} icon="terminal" description={t("Run this in your project folder; the source is packed and uploaded.")} />
                 <div className="space-y-3 p-5">
                   <CopyText text="dockra deploy" className="w-full" />
                   <p className="text-xs leading-6 text-muted">
-                    The first time, run <span className="font-mono text-fg-2">dockra login</span>. The <span className="font-mono text-fg-2">dockra.json</span> file stores this application&apos;s ID.
+                    {t("The first time, run dockra login. The dockra.json file stores this application's ID.")}
                   </p>
                 </div>
               </Card>
-              <form onSubmit={submit("deploy", () => api(`/api/apps/${slug}/deploy`, { method: "POST", body: JSON.stringify({ message }) }), "Deployment queued.")}>
+              <form onSubmit={submit("deploy", () => api(`/api/apps/${slug}/deploy`, { method: "POST", body: JSON.stringify({ message }) }), t("Deployment queued."))}>
                 <FormSection
-                  title="Rebuild"
-                  description="The latest uploaded source is built and released again."
-                  footer={<Button type="submit" icon="rocket" disabled={!!busy}>Start deployment</Button>}
+                  title={t("Rebuild")}
+                  description={t("The latest uploaded source is built and released again.")}
+                  footer={<Button type="submit" icon="rocket" disabled={!!busy}>{t("Start deployment")}</Button>}
                 >
-                  <Field label="Deployment message">
-                    <input className={inputClass} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="e.g. Fix the login bug" />
+                  <Field label={t("Deployment message")}>
+                    <input className={inputClass} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={t("e.g. Fix the login bug")} />
                   </Field>
                 </FormSection>
               </form>
@@ -624,35 +623,35 @@ export default function AppPage() {
 
         {tab === "history" && (
           deployments.length === 0 ? (
-            <Empty icon="rocket" title="No deployments yet" text="Run dockra deploy or use the Deploy button to build the first release." />
+            <Empty icon="rocket" title={t("No deployments yet")} text={t("Run dockra deploy or use the Deploy button to build the first release.")} />
           ) : (
             <div className="space-y-3">
               {deployments.map((item) => {
                 const expanded = open === item.id;
                 return (
                   <Card key={item.id} className="overflow-hidden">
-                    <button type="button" onClick={() => setOpen(expanded ? null : item.id)} className="flex w-full flex-wrap items-center gap-4 px-5 py-4 text-left transition-colors duration-150 hover:bg-fg/[0.02]">
+                    <button type="button" onClick={() => setOpen(expanded ? null : item.id)} className="flex w-full flex-wrap items-center gap-4 px-5 py-4 text-start transition-colors duration-150 hover:bg-fg/[0.02]">
                       <span className={`grid h-9 w-12 shrink-0 place-items-center rounded-lg text-xs font-bold ${item.is_current ? "bg-accent/10 text-brand ring-1 ring-inset ring-accent/30" : "bg-fg/[0.04] text-fg-2"}`}>
                         {item.version}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-medium" dir="auto">{item.message || "No message"}</span>
-                          {item.is_current && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-brand">Current</span>}
+                          <span className="truncate text-sm font-medium" dir="auto">{item.message || t("No message")}</span>
+                          {item.is_current && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-brand">{t("Current")}</span>}
                         </div>
                         <div className="mt-0.5 text-xs text-muted">{relTime(item.created_at)}{item.actor ? <> · <bdi>{item.actor}</bdi></> : ""}</div>
                       </div>
                       <StatusBadge status={item.status} label={item.status_label} />
-                      <Icon name="chevron" size={16} className={`text-muted transition-transform duration-200 ${expanded ? "rotate-90" : "rotate-180"}`} />
+                      <Icon name="chevron" size={16} className={`text-muted transition-transform duration-200 ${expanded ? "-rotate-90" : "rotate-180 rtl:rotate-0"}`} />
                     </button>
                     {expanded && (
                       <div className="border-t border-line/70">
                         <dl className="grid gap-px bg-line/50 sm:grid-cols-2">
                           {[
-                            ["Started", stamp(item.created_at)],
-                            ["Finished", stamp(item.finished_at)],
-                            ["Duration", duration(item.created_at, item.finished_at)],
-                            ["Image", item.image || "—"],
+                            [t("Started"), stamp(item.created_at)],
+                            [t("Finished"), stamp(item.finished_at)],
+                            [t("Duration"), duration(item.created_at, item.finished_at)],
+                            [t("Image"), item.image || "—"],
                           ].map(([k, v]) => (
                             <div key={k} className="flex items-center justify-between gap-3 bg-surface px-5 py-3 text-sm">
                               <dt className="text-muted">{k}</dt>
@@ -661,18 +660,18 @@ export default function AppPage() {
                           ))}
                         </dl>
                         <div className="flex items-center justify-between border-t border-line/70 px-5 py-2.5">
-                          <span className="text-xs font-medium text-fg-2">Build log</span>
+                          <span className="text-xs font-medium text-fg-2">{t("Build log")}</span>
                           {(item.status === "queued" || item.status === "building") ? (
-                            <Button type="button" tone="ghost" size="sm" icon="close" disabled={!!busy} onClick={() => act("cancel", `/api/apps/${slug}/deployments/${item.id}/cancel`, undefined, `${item.version} canceled.`)}>
-                              Cancel
+                            <Button type="button" tone="ghost" size="sm" icon="close" disabled={!!busy} onClick={() => act("cancel", `/api/apps/${slug}/deployments/${item.id}/cancel`, undefined, t("{version} canceled.", { version: item.version }))}>
+                              {t("Cancel")}
                             </Button>
                           ) : (item.image && !item.is_current) && (
-                            <Button type="button" tone="ghost" size="sm" icon="history" disabled={!!busy} onClick={() => act("rollback", `/api/apps/${slug}/rollback`, { deployment_id: item.id }, `Rolled back to ${item.version}.`)}>
-                              Roll back
+                            <Button type="button" tone="ghost" size="sm" icon="history" disabled={!!busy} onClick={() => act("rollback", `/api/apps/${slug}/rollback`, { deployment_id: item.id }, t("Rolled back to {version}.", { version: item.version }))}>
+                              {t("Roll back")}
                             </Button>
                           )}
                         </div>
-                        <pre className="max-h-80 overflow-auto bg-field px-5 py-4 text-left font-mono text-xs leading-6 text-fg-2">{item.log || "No build log."}</pre>
+                        <pre dir="ltr" className="max-h-80 overflow-auto bg-field px-5 py-4 text-start font-mono text-xs leading-6 text-fg-2">{item.log || t("No build log.")}</pre>
                       </div>
                     )}
                   </Card>
@@ -686,44 +685,44 @@ export default function AppPage() {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="w-full max-w-sm">
-                <Choice value={range} options={RANGES} onChange={setRange} />
+                <Choice value={range} options={RANGES.map((item) => ({ ...item, label: t(item.label) }))} onChange={setRange} />
               </div>
               <span className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-xs text-muted">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-                Refreshes every 5 seconds
+                {t("Refreshes every 5 seconds")}
               </span>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Gauge icon="cpu" label="CPU usage" value={`${fmt(app.metrics.cpu)}%`} hint={`${fmt(app.metrics.cpu_cores)} vCPU guaranteed, bursting to ${fmt(app.metrics.cpu_burst)} vCPU when idle`} percent={app.metrics.cpu} />
-              <Gauge icon="memory" label="Memory usage" value={`${fmt(app.metrics.ram)}%`} hint={`Limit ${memoryLabel(app.metrics.memory_mb)}`} percent={app.metrics.ram} />
-              <Gauge icon="network" label="Network" value={fmt(app.metrics.network_mbps)} unit="Mbps" hint="Container ingress and egress" />
+              <Gauge icon="cpu" label={t("CPU usage")} value={pct(app.metrics.cpu)} hint={t("{cores} vCPU guaranteed, bursting to {burst} vCPU when idle", { cores: fmt(app.metrics.cpu_cores), burst: fmt(app.metrics.cpu_burst) })} percent={app.metrics.cpu} />
+              <Gauge icon="memory" label={t("Memory usage")} value={pct(app.metrics.ram)} hint={t("Limit {value}", { value: memoryLabel(app.metrics.memory_mb) })} percent={app.metrics.ram} />
+              <Gauge icon="network" label={t("Network")} value={fmt(app.metrics.network_mbps)} unit={t("Mbps")} hint={t("Container ingress and egress")} />
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <MiniStat icon="activity" label="Requests / min" value={fmt(rounded(app.metrics.requests_per_min ?? 0))} />
+              <MiniStat icon="activity" label={t("Requests / min")} value={fmt(rounded(app.metrics.requests_per_min ?? 0))} />
               <MiniStat
                 icon="info"
-                label="5xx error rate"
-                value={`${fmt(rounded(app.metrics.error_rate ?? 0))}%`}
-                hint={app.metrics.errors_5xx_per_min ? `${fmt(rounded(app.metrics.errors_5xx_per_min))} per minute` : undefined}
+                label={t("5xx error rate")}
+                value={pct(rounded(app.metrics.error_rate ?? 0))}
+                hint={app.metrics.errors_5xx_per_min ? t("{n} per minute", { n: fmt(rounded(app.metrics.errors_5xx_per_min)) }) : undefined}
               />
-              <MiniStat icon="clock" label="p95 response time" value={msLabel(app.metrics.p95_ms)} unit={app.metrics.p95_ms == null ? undefined : "ms"} />
+              <MiniStat icon="clock" label={t("p95 response time")} value={msLabel(app.metrics.p95_ms)} unit={app.metrics.p95_ms == null ? undefined : t("ms")} />
             </div>
             {series && series.points.length === 0 ? (
-              <Empty icon="chart" title="No data for this range" text="Usage is collected from the moment the application starts running." />
+              <Empty icon="chart" title={t("No data for this range")} text={t("Usage is collected from the moment the application starts running.")} />
             ) : (
               <div className="grid gap-4 lg:grid-cols-3">
                 {([
-                  ["cpu", "CPU", "%", 100],
-                  ["ram", "RAM", "%", 100],
-                  ["network_mbps", "Network", "Mbps", undefined],
-                  ["requests", "Requests", "per min", undefined],
-                  ["errors_5xx", "5xx errors", "per min", undefined],
-                  ["p95_ms", "Response time", "ms", undefined],
+                  ["cpu", msg("CPU"), msg("%"), 100],
+                  ["ram", msg("RAM"), msg("%"), 100],
+                  ["network_mbps", msg("Network"), msg("Mbps"), undefined],
+                  ["requests", msg("Requests"), msg("per min"), undefined],
+                  ["errors_5xx", msg("5xx errors"), msg("per min"), undefined],
+                  ["p95_ms", msg("Response time"), msg("ms"), undefined],
                 ] as const).map(([key, title, unit, max]) => (
                   <TrendChart
                     key={key}
-                    title={title}
-                    unit={unit}
+                    title={t(title)}
+                    unit={t(unit)}
                     max={max}
                     dim={!series || series.range !== range}
                     points={(series?.points || []).map((p) => ({ t: p.t, v: key === "p95_ms" ? (p.p95_ms ?? null) : (p[key] ?? 0) }))}
@@ -738,32 +737,32 @@ export default function AppPage() {
           <div className="space-y-4">
             <form onSubmit={searchLogs} className="flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1 sm:max-w-md">
-                <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <input className={`${inputClass} pl-9`} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search logs" aria-label="Search logs" />
+                <Icon name="search" size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input className={`${inputClass} ps-9`} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Search logs")} aria-label={t("Search logs")} />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" icon="search" disabled={searching || !query.trim()} className="shrink-0">Search</Button>
-                {found && <Button type="button" tone="ghost" onClick={() => { setFound(null); setQuery(""); }}>Clear</Button>}
+                <Button type="submit" icon="search" disabled={searching || !query.trim()} className="shrink-0">{t("Search")}</Button>
+                {found && <Button type="button" tone="ghost" onClick={() => { setFound(null); setQuery(""); }}>{t("Clear")}</Button>}
               </div>
             </form>
 
             {found && (
               <Card className="overflow-hidden">
                 <CardHeader
-                  title={`${fmt(found.matches.length)} results for "${found.q}"`}
+                  title={t("{n} results for \"{query}\"", { n: fmt(found.matches.length), query: found.q })}
                   icon="search"
-                  description={found.truncated ? "There are more results; try a more specific query." : undefined}
+                  description={found.truncated ? t("There are more results; try a more specific query.") : undefined}
                 />
-                {found.matches.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">No matches.</p>}
+                {found.matches.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">{t("No matches.")}</p>}
                 {[...found.matches.reduce((map, m) => map.set(m.source, [...(map.get(m.source) || []), m.line]), new Map<string, string[]>())].map(([source, lines]) => (
                   <div key={source} className="border-t border-line/70 first:border-t-0">
                     <div className="flex items-center justify-between gap-3 bg-black/15 px-5 py-2 text-xs">
-                      <span className="font-medium text-fg-2">{source === "current" ? "Current log" : archiveTitle(source)} · {fmt(lines.length)} lines</span>
+                      <span className="font-medium text-fg-2">{source === "current" ? t("Current log") : archiveTitle(source)} · {t("{n} lines", { n: fmt(lines.length) })}</span>
                       {source !== "current" && (
-                        <button type="button" onClick={() => openArchive(source)} className="text-brand hover:underline">Open full log</button>
+                        <button type="button" onClick={() => openArchive(source)} className="text-brand hover:underline">{t("Open full log")}</button>
                       )}
                     </div>
-                    <pre className="max-h-72 overflow-auto bg-field px-5 py-3 text-left font-mono text-xs leading-6 text-fg-2">
+                    <pre dir="ltr" className="max-h-72 overflow-auto bg-field px-5 py-3 text-start font-mono text-xs leading-6 text-fg-2">
                       {lines.map((line, i) => <div key={i} className="whitespace-pre-wrap break-all"><Highlight text={line} query={found.q} /></div>)}
                     </pre>
                   </div>
@@ -776,7 +775,7 @@ export default function AppPage() {
                 {viewing ? (
                   <>
                     <span className="truncate text-xs font-medium text-fg-2">{viewing.title}</span>
-                    <Button type="button" tone="ghost" size="sm" onClick={() => setViewing(null)}>Back to live log</Button>
+                    <Button type="button" tone="ghost" size="sm" onClick={() => setViewing(null)}>{t("Back to live log")}</Button>
                   </>
                 ) : (
                   <>
@@ -787,20 +786,20 @@ export default function AppPage() {
                     </div>
                     <span className="inline-flex items-center gap-2 text-xs text-muted">
                       <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${logMode === "retry" ? "bg-warning" : "bg-accent"}`} />
-                      {logMode === "stream" ? "Live" : logMode === "poll" ? "Live · every 2 seconds" : "Disconnected; reconnecting…"}
+                      {logMode === "stream" ? t("Live") : logMode === "poll" ? t("Live · every 2 seconds") : t("Disconnected; reconnecting…")}
                     </span>
                   </>
                 )}
               </div>
-              <pre ref={logBox} className="max-h-[38rem] min-h-[22rem] overflow-auto p-4 text-left font-mono text-xs leading-6 text-fg-2">
-                {viewing ? (viewing.text === null ? "Loading…" : viewing.text || "Empty log.") : logs.length ? logs.join("\n") : "No logs yet."}
+              <pre ref={logBox} dir="ltr" className="max-h-[38rem] min-h-[22rem] overflow-auto p-4 text-start font-mono text-xs leading-6 text-fg-2">
+                {viewing ? (viewing.text === null ? t("Loading…") : viewing.text || t("Empty log.")) : logs.length ? logs.join("\n") : t("No logs yet.")}
               </pre>
             </div>
 
             <Card>
-              <CardHeader title="Previous releases" icon="history" description="Logs of containers replaced by later deployments." />
+              <CardHeader title={t("Previous releases")} icon="history" description={t("Logs of containers replaced by later deployments.")} />
               {archives === null && <p className="px-5 py-6 text-center text-sm text-muted">…</p>}
-              {archives?.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">No archived logs yet.</p>}
+              {archives?.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">{t("No archived logs yet.")}</p>}
               {archives && archives.length > 0 && (
                 <ul className="divide-y divide-line/60">
                   {archives.map((item) => (
@@ -808,12 +807,12 @@ export default function AppPage() {
                       <button
                         type="button"
                         onClick={() => openArchive(item.name)}
-                        className={`flex w-full items-center gap-3 px-5 py-3 text-left transition-colors duration-150 hover:bg-fg/[0.02] ${viewing?.name === item.name ? "bg-fg/[0.03]" : ""}`}
+                        className={`flex w-full items-center gap-3 px-5 py-3 text-start transition-colors duration-150 hover:bg-fg/[0.02] ${viewing?.name === item.name ? "bg-fg/[0.03]" : ""}`}
                       >
                         <span className="grid h-8 w-12 shrink-0 place-items-center rounded-lg bg-fg/[0.04] text-xs font-bold text-fg-2">{item.release}</span>
-                        <span className="min-w-0 flex-1 truncate text-sm">Ended {stamp(item.ended_at)}</span>
+                        <span className="min-w-0 flex-1 truncate text-sm">{t("Ended {time}", { time: stamp(item.ended_at) })}</span>
                         <span className="shrink-0 text-xs text-muted">{bytesLabel(item.size)}</span>
-                        <Icon name="chevron" size={15} className="rotate-180 text-muted" />
+                        <Icon name="chevron" size={15} className="rotate-180 text-muted rtl:rotate-0" />
                       </button>
                     </li>
                   ))}
@@ -832,9 +831,9 @@ export default function AppPage() {
             {app.disks.length > 0 ? (
               <div className="overflow-hidden rounded-xl border border-line bg-surface">
                 <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,0.8fr)_auto] gap-4 border-b border-line/70 px-5 py-3 text-xs text-muted sm:grid">
-                  <span>Disk</span>
-                  <span>Mount path</span>
-                  <span>Size</span>
+                  <span>{t("Disk")}</span>
+                  <span>{t("Mount path")}</span>
+                  <span>{t("Size")}</span>
                   <span className="w-[14rem]" />
                 </div>
                 <ul className="divide-y divide-line/60">
@@ -844,14 +843,14 @@ export default function AppPage() {
                         <Icon name="disk" size={16} className="text-muted" />
                         {item.name}
                       </span>
-                      <span className="w-fit rounded-md bg-bg/80 px-2 py-1 font-mono text-xs text-fg-2">{item.mount_to}</span>
-                      <span className="text-fg-2">{fmt(item.size_gb)} GB</span>
+                      <span dir="ltr" className="w-fit rounded-md bg-bg/80 px-2 py-1 font-mono text-xs text-fg-2">{item.mount_to}</span>
+                      <span className="text-fg-2">{t("{n} GB", { n: fmt(item.size_gb) })}</span>
                       <span className="flex gap-1">
                         <Button type="button" tone={filesDisk === item.name ? "soft" : "ghost"} size="sm" icon="folder" className="w-fit sm:w-24" onClick={() => setFilesDisk(filesDisk === item.name ? null : item.name)}>
-                          Files
+                          {t("Files")}
                         </Button>
                         <Button type="button" tone={backupsDisk === item.name ? "soft" : "ghost"} size="sm" icon="history" className="w-fit" onClick={() => setBackupsDisk(backupsDisk === item.name ? null : item.name)}>
-                          Backups
+                          {t("Backups")}
                         </Button>
                         <Button
                           type="button"
@@ -859,28 +858,29 @@ export default function AppPage() {
                           size="sm"
                           icon="resize"
                           className="w-fit"
-                          title="Grow or change mount path"
+                          title={t("Grow or change mount path")}
                           onClick={() => setEditDisk(editDisk?.name === item.name ? null : { name: item.name, size_gb: String(item.size_gb), mount_to: item.mount_to })}
                         >
-                          Resize
+                          {t("Resize")}
                         </Button>
-                        <Button type="button" tone={importDisk === item.name ? "soft" : "ghost"} size="sm" icon="upload" className="w-fit" title="Import files from FTP, a link or an archive" onClick={() => setImportDisk(importDisk === item.name ? null : item.name)}>
-                          Import
+                        <Button type="button" tone={importDisk === item.name ? "soft" : "ghost"} size="sm" icon="upload" className="w-fit" title={t("Import files from FTP, a link or an archive")} onClick={() => setImportDisk(importDisk === item.name ? null : item.name)}>
+                          {t("Import")}
                         </Button>
                         <Button
                           type="button"
                           tone="danger"
                           size="sm"
                           icon="trash"
-                          title="Delete disk"
+                          title={t("Delete disk")}
+                          aria-label={t("Delete disk")}
                           disabled={!!busy}
                           onClick={async () => {
-                            if (!(await confirmAction({ title: `Delete disk ${item.name}?`, message: "The files of this disk are deleted. Its backups are kept for 30 days and can be restored into a disk with the same name.", confirmLabel: "Delete disk" }))) return;
+                            if (!(await confirmAction({ title: t("Delete disk {name}?", { name: item.name }), message: t("The files of this disk are deleted. Its backups are kept for 30 days and can be restored into a disk with the same name."), confirmLabel: t("Delete disk") }))) return;
                             run("disk-rm", async () => {
                               await api(`/api/apps/${slug}/disks/${encodeURIComponent(item.name)}`, { method: "DELETE" });
                               if (filesDisk === item.name) setFilesDisk(null);
                               if (backupsDisk === item.name) setBackupsDisk(null);
-                            }, "Disk deleted.");
+                            }, t("Disk deleted."));
                           }}
                         />
                       </span>
@@ -889,7 +889,7 @@ export default function AppPage() {
                 </ul>
               </div>
             ) : (
-              <Empty icon="disk" title="No disks" text="Keep persistent files such as media on a disk so they survive every deployment." />
+              <Empty icon="disk" title={t("No disks")} text={t("Keep persistent files such as media on a disk so they survive every deployment.")} />
             )}
             {editDisk && app.disks.filter((item) => item.name === editDisk.name).map((item) => (
               <form
@@ -900,19 +900,19 @@ export default function AppPage() {
                     body: JSON.stringify({ size_gb: Number(editDisk.size_gb), mount_to: editDisk.mount_to }),
                   });
                   setEditDisk(null);
-                }, "Disk updated.")}
+                }, t("Disk updated."))}
               >
                 <FormSection
-                  title={`Size and path · ${item.name}`}
-                  description={`Current size ${fmt(item.size_gb)} GB. Disks only grow and files are never touched; the application restarts without downtime.`}
-                  footer={<Button type="submit" icon="check" disabled={!!busy || Number(editDisk.size_gb) < item.size_gb}>Apply</Button>}
+                  title={t("Size and path · {name}", { name: item.name })}
+                  description={t("Current size {n} GB. Disks only grow and files are never touched; the application restarts without downtime.", { n: fmt(item.size_gb) })}
+                  footer={<Button type="submit" icon="check" disabled={!!busy || Number(editDisk.size_gb) < item.size_gb}>{t("Apply")}</Button>}
                 >
                   <div className="grid gap-4 sm:grid-cols-[0.8fr_1.4fr]">
-                    <Field label="Size (GB)" hint={`At least ${fmt(item.size_gb)}`}>
+                    <Field label={t("Size (GB)")} hint={t("At least {n}", { n: fmt(item.size_gb) })}>
                       <input className={inputClass} inputMode="numeric" value={editDisk.size_gb} onChange={(e) => setEditDisk({ ...editDisk, size_gb: e.target.value })} />
                     </Field>
-                    <Field label="Path inside the container">
-                      <input className={`${inputClass} font-mono text-[13px]`} value={editDisk.mount_to} onChange={(e) => setEditDisk({ ...editDisk, mount_to: e.target.value })} />
+                    <Field label={t("Path inside the container")}>
+                      <input dir="ltr" className={`${inputClass} font-mono text-[13px]`} value={editDisk.mount_to} onChange={(e) => setEditDisk({ ...editDisk, mount_to: e.target.value })} />
                     </Field>
                   </div>
                 </FormSection>
@@ -933,16 +933,16 @@ export default function AppPage() {
             {app.disks.filter((item) => item.name === importDisk).map((item) => (
               <DiskImport key={item.name} slug={slug} disk={item.name} />
             ))}
-            <form onSubmit={submit("disk", () => api(`/api/apps/${slug}/disks`, { method: "POST", body: JSON.stringify({ ...disk, size_gb: Number(disk.size_gb) }) }), "Disk created.")}>
+            <form onSubmit={submit("disk", () => api(`/api/apps/${slug}/disks`, { method: "POST", body: JSON.stringify({ ...disk, size_gb: Number(disk.size_gb) }) }), t("Disk created."))}>
               <FormSection
-                title="Create a disk"
-                description="Each disk is a separate filesystem of the given size, mounted at the given path. To grow an existing disk, use Resize next to it."
-                footer={<Button type="submit" icon="plus" disabled={!!busy}>Create disk</Button>}
+                title={t("Create a disk")}
+                description={t("Each disk is a separate filesystem of the given size, mounted at the given path. To grow an existing disk, use Resize next to it.")}
+                footer={<Button type="submit" icon="plus" disabled={!!busy}>{t("Create disk")}</Button>}
               >
                 <div className="grid gap-4 sm:grid-cols-[1fr_1.4fr_0.8fr]">
-                  <Field label="Name"><input className={inputClass} value={disk.name} onChange={(e) => setDisk({ ...disk, name: e.target.value })} /></Field>
-                  <Field label="Path inside the container"><input className={`${inputClass} font-mono text-[13px]`} value={disk.mount_to} onChange={(e) => setDisk({ ...disk, mount_to: e.target.value })} /></Field>
-                  <Field label="Size (GB)"><input className={inputClass} inputMode="numeric" value={disk.size_gb} onChange={(e) => setDisk({ ...disk, size_gb: e.target.value })} /></Field>
+                  <Field label={t("Name")}><input className={inputClass} dir="ltr" value={disk.name} onChange={(e) => setDisk({ ...disk, name: e.target.value })} /></Field>
+                  <Field label={t("Path inside the container")}><input dir="ltr" className={`${inputClass} font-mono text-[13px]`} value={disk.mount_to} onChange={(e) => setDisk({ ...disk, mount_to: e.target.value })} /></Field>
+                  <Field label={t("Size (GB)")}><input className={inputClass} inputMode="numeric" value={disk.size_gb} onChange={(e) => setDisk({ ...disk, size_gb: e.target.value })} /></Field>
                 </div>
               </FormSection>
             </form>
@@ -956,18 +956,18 @@ export default function AppPage() {
               onSubmit={submit("domain", async () => {
                 await api(`/api/apps/${slug}/domains`, { method: "POST", body: JSON.stringify({ hostname }) });
                 setHostname("");
-              }, "Domain added.")}
+              }, t("Domain added."))}
             >
-              <input className={`${inputClass} sm:max-w-sm`} value={hostname} onChange={(e) => setHostname(e.target.value)} placeholder="app.example.com" />
-              <Button type="submit" icon="plus" disabled={!!busy || !hostname.trim()} className="shrink-0">Add domain</Button>
+              <input className={`${inputClass} sm:max-w-sm`} value={hostname} onChange={(e) => setHostname(e.target.value)} placeholder="app.example.com" dir="ltr" />
+              <Button type="submit" icon="plus" disabled={!!busy || !hostname.trim()} className="shrink-0">{t("Add domain")}</Button>
             </form>
             {app.domains.length > 0 ? (
               <div className="overflow-hidden rounded-xl border border-line bg-surface">
                 <div className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_2rem] gap-4 border-b border-line/70 px-5 py-3 text-xs text-muted sm:grid">
-                  <span>Domain</span>
-                  <span>Type</span>
-                  <span>SSL</span>
-                  <span>Force HTTPS</span>
+                  <span>{t("Domain")}</span>
+                  <span>{t("Type")}</span>
+                  <span>{t("SSL")}</span>
+                  <span>{t("Force HTTPS")}</span>
                   <span />
                 </div>
                 <ul className="divide-y divide-line/60">
@@ -975,7 +975,7 @@ export default function AppPage() {
                     <li key={item.id} className="grid items-center gap-2 px-5 py-3.5 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_2rem] sm:gap-4">
                       <a href={`http://${item.hostname}`} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2 text-sm font-medium hover:text-brand">
                         <Icon name="shield" size={15} className={item.ssl_status === "active" ? "text-brand" : "text-muted"} />
-                        <span className="truncate">{item.hostname}</span>
+                        <span className="truncate" dir="ltr">{item.hostname}</span>
                         <Icon name="external" size={13} className="text-muted" />
                       </a>
                       <span className="text-sm text-fg-2">{item.kind_label}</span>
@@ -983,19 +983,20 @@ export default function AppPage() {
                       <span className="flex items-center gap-2 text-xs text-muted">
                         <Toggle
                           on={item.redirect_https}
-                          label="Force HTTPS"
+                          label={t("Force HTTPS")}
                           disabled={!!busy}
                           onChange={(on) => run("https", () => api(`/api/apps/${slug}/domains/${item.id}`, { method: "PATCH", body: JSON.stringify({ redirect_https: on }) }))}
                         />
-                        <span className="sm:hidden">Force HTTPS</span>
+                        <span className="sm:hidden">{t("Force HTTPS")}</span>
                       </span>
                       <button
                         type="button"
-                        title="Remove domain"
+                        title={t("Remove domain")}
+                        aria-label={t("Remove domain")}
                         disabled={!!busy}
                         onClick={async () => {
-                          if (!(await confirmAction({ title: `Remove ${item.hostname}?`, message: "This domain will no longer reach the application.", confirmLabel: "Remove domain" }))) return;
-                          run("domain-rm", () => api(`/api/apps/${slug}/domains/${item.id}`, { method: "DELETE" }), "Domain removed.");
+                          if (!(await confirmAction({ title: t("Remove {name}?", { name: item.hostname }), message: t("This domain will no longer reach the application."), confirmLabel: t("Remove domain") }))) return;
+                          run("domain-rm", () => api(`/api/apps/${slug}/domains/${item.id}`, { method: "DELETE" }), t("Domain removed."));
                         }}
                         className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger disabled:opacity-50"
                       >
@@ -1007,7 +1008,7 @@ export default function AppPage() {
                 </ul>
               </div>
             ) : (
-              <Empty icon="globe" title="No custom domains" text="Add your own domain; the DNS record you need to create is shown right here." />
+              <Empty icon="globe" title={t("No custom domains")} text={t("Add your own domain; the DNS record you need to create is shown right here.")} />
             )}
             {app.domains.length > 0 && (
               <Redirects key={app.domains.map((item) => item.hostname).join(",")} slug={slug} hosts={app.domains.map((item) => item.hostname)} />
@@ -1025,7 +1026,7 @@ export default function AppPage() {
                   onClick={() => setEnvTab(id)}
                   className={`relative shrink-0 px-3 py-3.5 text-[13px] transition-colors duration-150 ${envTab === id ? "font-medium text-brand" : "text-muted hover:text-fg"}`}
                 >
-                  {text}
+                  {t(text)}
                   <span className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent transition-opacity duration-150 ${envTab === id ? "opacity-100" : "opacity-0"}`} />
                 </button>
               ))}
@@ -1033,16 +1034,16 @@ export default function AppPage() {
 
             {envTab === "paste" && (
               <div className="space-y-3 border-b border-line/70 p-5">
-                <p className="text-xs leading-6 text-muted">One variable per line as KEY=VALUE. Add appends them to the list below; then save.</p>
+                <p className="text-xs leading-6 text-muted">{t("One variable per line as KEY=VALUE. Add appends them to the list below; then save.")}</p>
                 <textarea
                   className={`${inputClass} h-36 resize-y py-3 font-mono text-[13px] leading-6`}
-                 
+                  dir="ltr"
                   value={paste}
                   onChange={(e) => setPaste(e.target.value)}
                   placeholder={"VAR1=demo1\nVAR2=demo2"}
                 />
                 <Button type="button" tone="soft" icon="plus" disabled={!paste.trim()} onClick={() => { setEnvRows(mergeEnv(envRows, parseEnv(paste))); setPaste(""); setEnvTab("rows"); }}>
-                  Add
+                  {t("Add")}
                 </Button>
               </div>
             )}
@@ -1051,8 +1052,8 @@ export default function AppPage() {
               <div className="border-b border-line/70 p-5">
                 <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-line px-6 py-10 text-center transition-colors duration-150 hover:border-faint">
                   <Icon name="upload" size={22} className="text-fg-2" />
-                  <span className="text-sm font-medium">Choose a .env file</span>
-                  <span className="text-xs text-muted">Variables are added to the list; then save.</span>
+                  <span className="text-sm font-medium">{t("Choose a .env file")}</span>
+                  <span className="text-xs text-muted">{t("Variables are added to the list; then save.")}</span>
                   <input
                     type="file"
                     className="hidden"
@@ -1074,17 +1075,17 @@ export default function AppPage() {
               const updated = parsed.filter((item) => known.has(item.key)).length;
               return (
                 <div className="space-y-3 border-b border-line/70 p-5">
-                  <p className="text-xs leading-6 text-muted">Paste the contents of a .env file. Existing keys get the new value and other variables are untouched; everything is saved at once after you confirm.</p>
+                  <p className="text-xs leading-6 text-muted">{t("Paste the contents of a .env file. Existing keys get the new value and other variables are untouched; everything is saved at once after you confirm.")}</p>
                   <textarea
                     className={`${inputClass} h-48 resize-y py-3 font-mono text-[13px] leading-6`}
-                   
+                    dir="ltr"
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
                     placeholder={"# comment\nexport DEBUG=false\nSECRET_KEY=\"change-me\""}
                   />
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="text-xs text-muted">
-                      {parsed.length ? `${fmt(parsed.length)} variables · ${fmt(parsed.length - updated)} new · ${fmt(updated)} replaced` : "No variables found."}
+                      {parsed.length ? t("{n} variables · {added} new · {replaced} replaced", { n: fmt(parsed.length), added: fmt(parsed.length - updated), replaced: fmt(updated) }) : t("No variables found.")}
                     </span>
                     <Button
                       type="button"
@@ -1096,10 +1097,10 @@ export default function AppPage() {
                           await api(`/api/apps/${slug}/env`, { method: "PUT", body: JSON.stringify({ items }) });
                           setImportText("");
                           setEnvTab("rows");
-                        }, `${fmt(parsed.length)} variables imported and saved.`);
+                        }, t("{n} variables imported and saved.", { n: fmt(parsed.length) }));
                       }}
                     >
-                      Import and save
+                      {t("Import and save")}
                     </Button>
                   </div>
                 </div>
@@ -1108,9 +1109,9 @@ export default function AppPage() {
 
             {envTab === "ready" && (
               <div className="border-b border-line/70 p-5">
-                <p className="mb-4 text-sm">Choose a database to write its connection URL into this application.</p>
+                <p className="mb-4 text-sm">{t("Choose a database to write its connection URL into this application.")}</p>
                 {dbs.length === 0 ? (
-                  <p className="text-sm text-muted">No databases yet.</p>
+                  <p className="text-sm text-muted">{t("No databases yet.")}</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {dbs.map((db) => (
@@ -1118,9 +1119,8 @@ export default function AppPage() {
                         key={db.id}
                         type="button"
                         disabled={!!busy}
-                        onClick={() => act("link", `/api/databases/${db.id}/link`, { app: slug }, `${db.engine === "redis" ? "REDIS_URL" : "DATABASE_URL"} from ${db.name} added.`)}
+                        onClick={() => act("link", `/api/databases/${db.id}/link`, { app: slug }, t("{key} from {name} added.", { key: db.engine === "redis" ? "REDIS_URL" : "DATABASE_URL", name: db.name }))}
                         className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition-colors duration-150 hover:border-accent/50 hover:text-brand disabled:opacity-50"
-                       
                       >
                         <EngineMark engine={db.engine} size="xs" />
                         {db.name}
@@ -1131,46 +1131,46 @@ export default function AppPage() {
               </div>
             )}
 
-            <form onSubmit={submit("env", () => api(`/api/apps/${slug}/env`, { method: "PUT", body: JSON.stringify({ items: envRows.filter((row) => row.key) }) }), "Variables saved and applied.")}>
+            <form onSubmit={submit("env", () => api(`/api/apps/${slug}/env`, { method: "PUT", body: JSON.stringify({ items: envRows.filter((row) => row.key) }) }), t("Variables saved and applied."))}>
               <div className="flex items-center justify-between px-5 pt-4">
-                <span className="text-xs text-muted">{fmt(envRows.length)} variables</span>
+                <span className="text-xs text-muted">{t("{n} variables", { n: fmt(envRows.length) })}</span>
                 <div className="flex gap-2">
                   {envRows.length > 0 && (
-                    <Button type="button" tone="ghost" size="sm" icon="trash" onClick={() => setEnvRows([])}>Remove all</Button>
+                    <Button type="button" tone="ghost" size="sm" icon="trash" onClick={() => setEnvRows([])}>{t("Remove all")}</Button>
                   )}
-                  <Button type="button" tone="soft" size="sm" icon="plus" onClick={() => setEnvRows([...envRows, { key: "", value: "", is_secret: false }])}>Add row</Button>
+                  <Button type="button" tone="soft" size="sm" icon="plus" onClick={() => setEnvRows([...envRows, { key: "", value: "", is_secret: false }])}>{t("Add row")}</Button>
                 </div>
               </div>
               <div className="space-y-2 p-5">
-                {envRows.length === 0 && <p className="py-6 text-center text-sm text-muted">No variables defined.</p>}
+                {envRows.length === 0 && <p className="py-6 text-center text-sm text-muted">{t("No variables defined.")}</p>}
                 {envRows.map((row, index) => (
                   <div key={index} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] gap-2">
-                    <input className={`${inputClass} font-mono text-[13px]`} value={row.key} placeholder="KEY" onChange={(e) => setEnvRows(envRows.map((item, i) => (i === index ? { ...item, key: e.target.value.toUpperCase() } : item)))} />
-                    <input className={`${inputClass} font-mono text-[13px]`} value={row.value} placeholder="value" onChange={(e) => setEnvRows(envRows.map((item, i) => (i === index ? { ...item, value: e.target.value } : item)))} />
-                    <button type="button" title="Remove" aria-label="Remove variable" onClick={() => setEnvRows(envRows.filter((_, i) => i !== index))} className="grid h-10 w-10 place-items-center rounded-lg text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger">
+                    <input dir="ltr" className={`${inputClass} font-mono text-[13px]`} value={row.key} placeholder="KEY" aria-label={t("Key")} onChange={(e) => setEnvRows(envRows.map((item, i) => (i === index ? { ...item, key: e.target.value.toUpperCase() } : item)))} />
+                    <input dir="ltr" className={`${inputClass} font-mono text-[13px]`} value={row.value} placeholder={t("value")} aria-label={t("Value")} onChange={(e) => setEnvRows(envRows.map((item, i) => (i === index ? { ...item, value: e.target.value } : item)))} />
+                    <button type="button" title={t("Remove")} aria-label={t("Remove variable")} onClick={() => setEnvRows(envRows.filter((_, i) => i !== index))} className="grid h-10 w-10 place-items-center rounded-lg text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger">
                       <Icon name="trash" size={16} />
                     </button>
                   </div>
                 ))}
               </div>
               <div className="flex justify-end border-t border-line/70 bg-black/15 px-5 py-3.5">
-                <Button type="submit" icon="check" disabled={!!busy}>Save changes</Button>
+                <Button type="submit" icon="check" disabled={!!busy}>{t("Save changes")}</Button>
               </div>
             </form>
           </Card>
         )}
 
         {tab === "resize" && (
-          <form onSubmit={submit("plan", () => api(`/api/apps/${slug}`, { method: "PATCH", body: JSON.stringify({ cpu: Number(plan.cpu), memory_mb: Number(plan.memory_mb), instances: Number(plan.instances) }) }), "New resources applied.")}>
+          <form onSubmit={submit("plan", () => api(`/api/apps/${slug}`, { method: "PATCH", body: JSON.stringify({ cpu: Number(plan.cpu), memory_mb: Number(plan.memory_mb), instances: Number(plan.instances) }) }), t("New resources applied."))}>
             <FormSection
-              title="Resource plan"
-              description="Applied to the running application immediately. The change is rejected if the server lacks capacity."
-              footer={<Button type="submit" icon="check" disabled={!!busy}>Apply resources</Button>}
+              title={t("Resource plan")}
+              description={t("Applied to the running application immediately. The change is rejected if the server lacks capacity.")}
+              footer={<Button type="submit" icon="check" disabled={!!busy}>{t("Apply resources")}</Button>}
             >
-              <Field label="Presets">
+              <Field label={t("Presets")}>
                 <Choice
                   value={planKey}
-                  options={PLANS}
+                  options={PLANS.map((item) => ({ ...item, label: t(item.label) }))}
                   onChange={(value) => {
                     const [cpu, memory] = value.split("/");
                     setPlan({ ...plan, cpu, memory_mb: memory });
@@ -1178,16 +1178,15 @@ export default function AppPage() {
                 />
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="CPU (cores)"><input className={inputClass} inputMode="decimal" value={plan.cpu} onChange={(e) => setPlan({ ...plan, cpu: e.target.value })} /></Field>
-                <Field label="Memory (MB)"><input className={inputClass} inputMode="numeric" value={plan.memory_mb} onChange={(e) => setPlan({ ...plan, memory_mb: e.target.value })} /></Field>
+                <Field label={t("CPU (cores)")}><input className={inputClass} inputMode="decimal" value={plan.cpu} onChange={(e) => setPlan({ ...plan, cpu: e.target.value })} /></Field>
+                <Field label={t("Memory (MB)")}><input className={inputClass} inputMode="numeric" value={plan.memory_mb} onChange={(e) => setPlan({ ...plan, memory_mb: e.target.value })} /></Field>
               </div>
               <details className="group rounded-lg border border-line/70 px-4 py-3" open={Number(plan.instances) > 1}>
-                <summary className="cursor-pointer select-none text-sm text-muted transition-colors duration-150 hover:text-fg">Advanced</summary>
+                <summary className="cursor-pointer select-none text-sm text-muted transition-colors duration-150 hover:text-fg">{t("Advanced")}</summary>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Field label="Instances"><input className={inputClass} inputMode="numeric" value={plan.instances} onChange={(e) => setPlan({ ...plan, instances: e.target.value })} /></Field>
+                  <Field label={t("Instances")}><input className={inputClass} inputMode="numeric" value={plan.instances} onChange={(e) => setPlan({ ...plan, instances: e.target.value })} /></Field>
                   <p className="text-xs leading-6 text-muted sm:pt-7">
-                    Several copies of the application run side by side and traffic is balanced between them. Each instance reserves its own CPU and memory;
-                    applications that write files to disk or run cron jobs should usually stay at 1.
+                    {t("Several copies of the application run side by side and traffic is balanced between them. Each instance reserves its own CPU and memory; applications that write files to disk or run cron jobs should usually stay at 1.")}
                   </p>
                 </div>
               </details>
@@ -1197,31 +1196,31 @@ export default function AppPage() {
 
         {tab === "settings" && (
           <div className="space-y-5">
-            <form onSubmit={submit("source", () => api(`/api/apps/${slug}`, { method: "PATCH", body: JSON.stringify(source) }), "Settings saved; they apply on the next deployment.")}>
+            <form onSubmit={submit("source", () => api(`/api/apps/${slug}`, { method: "PATCH", body: JSON.stringify(source) }), t("Settings saved; they apply on the next deployment."))}>
               <FormSection
-                title="Platform and runtime"
-                description="Build type, Git branch and the path used to health-check the application."
-                footer={<Button type="submit" icon="check" disabled={!!busy}>Save</Button>}
+                title={t("Platform and runtime")}
+                description={t("Build type, Git branch and the path used to health-check the application.")}
+                footer={<Button type="submit" icon="check" disabled={!!busy}>{t("Save")}</Button>}
               >
-                <Field label="Platform">
+                <Field label={t("Platform")}>
                   <select className={selectClass} value={source.platform} onChange={(e) => setSource({ ...source, platform: e.target.value })}>
-                    {PLATFORMS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    {PLATFORMS.map((item) => <option key={item.value} value={item.value}>{t(item.label)}</option>)}
                   </select>
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Git branch" hint="Automatic deploys only trigger on pushes to this branch.">
-                    <input className={`${inputClass} font-mono text-[13px]`} value={source.git_branch} onChange={(e) => setSource({ ...source, git_branch: e.target.value })} placeholder="main" />
+                  <Field label={t("Git branch")} hint={t("Automatic deploys only trigger on pushes to this branch.")}>
+                    <input dir="ltr" className={`${inputClass} font-mono text-[13px]`} value={source.git_branch} onChange={(e) => setSource({ ...source, git_branch: e.target.value })} placeholder="main" />
                   </Field>
-                  <Field label="Health check path" hint="Empty means only an open port is checked.">
-                    <input className={`${inputClass} font-mono text-[13px]`} value={source.health_path} onChange={(e) => setSource({ ...source, health_path: e.target.value })} placeholder="/healthz" />
+                  <Field label={t("Health check path")} hint={t("Empty means only an open port is checked.")}>
+                    <input dir="ltr" className={`${inputClass} font-mono text-[13px]`} value={source.health_path} onChange={(e) => setSource({ ...source, health_path: e.target.value })} placeholder="/healthz" />
                   </Field>
                 </div>
               </FormSection>
             </form>
 
             <FormSection
-              title="Automatic deploys from Git"
-              description="In GitHub/GitLab/Gitea add this URL as a webhook (push event) and enter the secret as well."
+              title={t("Automatic deploys from Git")}
+              description={t("In GitHub/GitLab/Gitea add this URL as a webhook (push event) and enter the secret as well.")}
               footer={
                 hookOn ? (
                   <>
@@ -1231,14 +1230,14 @@ export default function AppPage() {
                       icon="power"
                       disabled={!!busy}
                       onClick={async () => {
-                        if (!(await confirmAction({ title: "Disable automatic deploys?", message: "Pushes to Git will no longer deploy the application.", confirmLabel: "Disable" }))) return;
+                        if (!(await confirmAction({ title: t("Disable automatic deploys?"), message: t("Pushes to Git will no longer deploy the application."), confirmLabel: t("Disable") }))) return;
                         run("hook", async () => {
                           await api(`/api/apps/${slug}/webhook`, { method: "DELETE" });
                           setHook({ enabled: false, url: "" });
-                        }, "Webhook disabled.");
+                        }, t("Webhook disabled."));
                       }}
                     >
-                      Disable
+                      {t("Disable")}
                     </Button>
                     <Button
                       type="button"
@@ -1246,16 +1245,16 @@ export default function AppPage() {
                       icon="restart"
                       disabled={!!busy}
                       onClick={async () => {
-                        if (!(await confirmAction({ title: "Rotate URL and secret", message: "The current URL and secret stop working and must be updated in your Git provider.", confirmLabel: "Rotate" }))) return;
+                        if (!(await confirmAction({ title: t("Rotate URL and secret"), message: t("The current URL and secret stop working and must be updated in your Git provider."), confirmLabel: t("Rotate") }))) return;
                         run("hook", async () => setHook(await api<Webhook>(`/api/apps/${slug}/webhook`, { method: "POST", body: "{}" })));
                       }}
                     >
-                      Rotate secret
+                      {t("Rotate secret")}
                     </Button>
                   </>
                 ) : (
                   <Button type="button" icon="git" disabled={!!busy || !app.git_url} onClick={() => run("hook", async () => setHook(await api<Webhook>(`/api/apps/${slug}/webhook`, { method: "POST", body: "{}" })))}>
-                    Enable
+                    {t("Enable")}
                   </Button>
                 )
               }
@@ -1263,29 +1262,29 @@ export default function AppPage() {
               <div className="overflow-hidden rounded-lg border border-line/70">
                 <KeyValue
                   rows={[
-                    ["Repository", app.git_url ? <span key="git" className="font-mono text-xs">{app.git_url}</span> : "Not set"],
-                    ["Branch", <span key="br" className="font-mono text-xs">{app.git_branch || "—"}</span>],
-                    ["Status", hookOn ? "Enabled" : "Disabled"],
+                    [t("Repository"), app.git_url ? <span key="git" dir="ltr" className="font-mono text-xs">{app.git_url}</span> : t("Not set")],
+                    [t("Branch"), <span key="br" dir="ltr" className="font-mono text-xs">{app.git_branch || "—"}</span>],
+                    [t("Status"), hookOn ? t("Enabled") : t("Disabled")],
                   ]}
                 />
               </div>
-              {!app.git_url && <p className="text-xs leading-6 text-muted">Automatic deploys need a Git repository on the application.</p>}
+              {!app.git_url && <p className="text-xs leading-6 text-muted">{t("Automatic deploys need a Git repository on the application.")}</p>}
               {hook?.secret ? (
                 <div className="space-y-3">
-                  <Field label="Webhook URL"><CopyText text={hook.url} className="w-full" /></Field>
-                  <Field label="Secret"><CopyText text={hook.secret} className="w-full" /></Field>
-                  <p className="text-xs leading-6 text-warning/90">This URL and secret are shown only once; copy them now.</p>
+                  <Field label={t("Webhook URL")}><CopyText text={hook.url} className="w-full" /></Field>
+                  <Field label={t("Secret")}><CopyText text={hook.secret} className="w-full" /></Field>
+                  <p className="text-xs leading-6 text-warning/90">{t("This URL and secret are shown only once; copy them now.")}</p>
                 </div>
               ) : (
-                hookOn && <p className="text-xs leading-6 text-muted">The webhook is enabled. If you no longer have the URL or secret, rotate them.</p>
+                hookOn && <p className="text-xs leading-6 text-muted">{t("The webhook is enabled. If you no longer have the URL or secret, rotate them.")}</p>
               )}
             </FormSection>
 
-            <form onSubmit={submit("cron", () => api(`/api/apps/${slug}/cron`, { method: "POST", body: JSON.stringify(cron) }), "Cron job added.")}>
+            <form onSubmit={submit("cron", () => api(`/api/apps/${slug}/cron`, { method: "POST", body: JSON.stringify(cron) }), t("Cron job added."))}>
               <FormSection
-                title="Scheduled jobs"
-                description="Cron commands run inside the application container."
-                footer={<Button type="submit" icon="plus" disabled={!!busy}>Add cron job</Button>}
+                title={t("Scheduled jobs")}
+                description={t("Cron commands run inside the application container.")}
+                footer={<Button type="submit" icon="plus" disabled={!!busy}>{t("Add cron job")}</Button>}
               >
                 {app.cron.length > 0 && (
                   <ul className="space-y-2">
@@ -1293,27 +1292,28 @@ export default function AppPage() {
                       <li key={item.id} className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-opacity duration-150 ${item.enabled ? "border-accent/30" : "border-line opacity-60"}`}>
                         <Toggle
                           on={item.enabled}
-                          label={item.enabled ? "Disable" : "Enable"}
+                          label={item.enabled ? t("Disable") : t("Enable")}
                           disabled={!!busy}
                           onChange={(on) => run("cron-toggle", () => api(`/api/apps/${slug}/cron/${item.id}`, { method: "PATCH", body: JSON.stringify({ enabled: on }) }))}
                         />
-                        <div className="min-w-0 flex-1 font-mono text-xs">
+                        <div className="min-w-0 flex-1 font-mono text-xs" dir="ltr">
                           <div className="flex min-w-0 gap-3">
                             <span className="shrink-0 text-brand">{item.schedule}</span>
                             <span className="min-w-0 truncate text-fg-2">{item.command}</span>
                           </div>
                         </div>
                         <span className={`hidden shrink-0 text-[11px] sm:inline ${item.last_status === "failed" ? "text-danger" : "text-muted"}`}>
-                          {item.last_status === "ok" ? "Succeeded" : item.last_status === "failed" ? "Failed" : item.last_status || "Not run yet"}
+                          {item.last_status === "ok" ? t("Succeeded") : item.last_status === "failed" ? t("Failed") : item.last_status || t("Not run yet")}
                           {item.last_run_at && ` · ${relTime(item.last_run_at)}`}
                         </span>
                         <button
                           type="button"
-                          title="Delete"
+                          title={t("Delete")}
+                          aria-label={t("Delete")}
                           disabled={!!busy}
                           onClick={async () => {
-                            if (!(await confirmAction({ title: "Delete this cron job?", confirmLabel: "Delete" }))) return;
-                            run("cron-rm", () => api(`/api/apps/${slug}/cron/${item.id}`, { method: "DELETE" }), "Cron job deleted.");
+                            if (!(await confirmAction({ title: t("Delete this cron job?"), confirmLabel: t("Delete") }))) return;
+                            run("cron-rm", () => api(`/api/apps/${slug}/cron/${item.id}`, { method: "DELETE" }), t("Cron job deleted."));
                           }}
                           className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger disabled:opacity-50"
                         >
@@ -1324,8 +1324,8 @@ export default function AppPage() {
                   </ul>
                 )}
                 <div className="grid gap-4 sm:grid-cols-[0.8fr_2fr]">
-                  <Field label="Schedule"><input className={`${inputClass} font-mono text-[13px]`} value={cron.schedule} onChange={(e) => setCron({ ...cron, schedule: e.target.value })} /></Field>
-                  <Field label="Command"><input className={`${inputClass} font-mono text-[13px]`} value={cron.command} onChange={(e) => setCron({ ...cron, command: e.target.value })} /></Field>
+                  <Field label={t("Schedule")}><input dir="ltr" className={`${inputClass} font-mono text-[13px]`} value={cron.schedule} onChange={(e) => setCron({ ...cron, schedule: e.target.value })} /></Field>
+                  <Field label={t("Command")}><input dir="ltr" className={`${inputClass} font-mono text-[13px]`} value={cron.command} onChange={(e) => setCron({ ...cron, command: e.target.value })} /></Field>
                 </div>
               </FormSection>
             </form>
@@ -1333,8 +1333,8 @@ export default function AppPage() {
             <Card className="border-danger/25">
               <div className="flex flex-wrap items-center justify-between gap-4 p-5 md:p-6">
                 <div>
-                  <h2 className="text-[15px] font-semibold text-danger">Delete application</h2>
-                  <p className="mt-1 text-xs leading-6 text-muted">Containers, disks and deployment history are permanently removed.</p>
+                  <h2 className="text-[15px] font-semibold text-danger">{t("Delete application")}</h2>
+                  <p className="mt-1 text-xs leading-6 text-muted">{t("Containers, disks and deployment history are permanently removed.")}</p>
                 </div>
                 <Button
                   type="button"
@@ -1342,7 +1342,7 @@ export default function AppPage() {
                   icon="trash"
                   disabled={!!busy}
                   onClick={async () => {
-                    if (!(await confirmAction({ title: "Delete the application?", message: "Containers, disks and deployment history are permanently removed.", confirmLabel: "Delete application" }))) return;
+                    if (!(await confirmAction({ title: t("Delete the application?"), message: t("Containers, disks and deployment history are permanently removed."), confirmLabel: t("Delete application") }))) return;
                     try {
                       await api(`/api/apps/${slug}`, { method: "DELETE" });
                       router.push("/apps");
@@ -1351,7 +1351,7 @@ export default function AppPage() {
                     }
                   }}
                 >
-                  Delete application
+                  {t("Delete application")}
                 </Button>
               </div>
             </Card>
@@ -1397,11 +1397,11 @@ function Console({ slug }: { slug: string }) {
     <div className="space-y-3">
       <div className="overflow-hidden rounded-xl border border-line bg-field">
         <div className="flex items-center justify-between border-b border-line/70 px-4 py-2.5">
-          <span className="text-xs text-muted">Each command runs separately inside the container; the working directory is kept between commands.</span>
-          {history.length > 0 && <Button type="button" tone="ghost" size="sm" onClick={() => setHistory([])}>Clear</Button>}
+          <span className="text-xs text-muted">{t("Each command runs separately inside the container; the working directory is kept between commands.")}</span>
+          {history.length > 0 && <Button type="button" tone="ghost" size="sm" onClick={() => setHistory([])}>{t("Clear")}</Button>}
         </div>
-        <div ref={box} className="max-h-[32rem] min-h-[18rem] overflow-auto p-4 text-left font-mono text-xs leading-6" onClick={() => input.current?.focus()}>
-          {history.length === 0 && <div className="text-muted">Run a command, e.g. python manage.py migrate</div>}
+        <div ref={box} dir="ltr" className="max-h-[32rem] min-h-[18rem] overflow-auto p-4 text-start font-mono text-xs leading-6" onClick={() => input.current?.focus()}>
+          {history.length === 0 && <div className="text-muted">{t("Run a command, e.g. python manage.py migrate")}</div>}
           {history.map((item, index) => (
             <div key={index} className="mb-2">
               <div><span className="text-brand">{item.cwd} $</span> <span className="text-fg">{item.command}</span></div>
@@ -1410,7 +1410,7 @@ function Console({ slug }: { slug: string }) {
             </div>
           ))}
         </div>
-        <form onSubmit={exec} className="flex items-center gap-2 border-t border-line/70 px-4 py-2.5 font-mono text-xs">
+        <form onSubmit={exec} dir="ltr" className="flex items-center gap-2 border-t border-line/70 px-4 py-2.5 font-mono text-xs">
           <span className="shrink-0 text-brand">{cwd || "~"} $</span>
           <input
             ref={input}
@@ -1418,7 +1418,8 @@ function Console({ slug }: { slug: string }) {
             style={{ background: "transparent", boxShadow: "none" }}
             value={command}
             onChange={(e) => setCommand(e.target.value)}
-            placeholder={busy ? "running…" : "command"}
+            placeholder={busy ? t("running…") : t("command")}
+            aria-label={t("Command")}
             disabled={busy}
             autoFocus
             spellCheck={false}
@@ -1494,9 +1495,9 @@ function StepDot({ state }: { state: Step["state"] }) {
 }
 
 function stepWord(state: Step["state"]) {
-  if (state === "done") return "Done";
-  if (state === "current") return "In progress";
-  if (state === "failed") return "Failed";
-  if (state === "skipped") return "Skipped";
-  return "Pending";
+  if (state === "done") return t("Done");
+  if (state === "current") return t("In progress");
+  if (state === "failed") return t("Failed");
+  if (state === "skipped") return t("Skipped");
+  return t("Pending");
 }

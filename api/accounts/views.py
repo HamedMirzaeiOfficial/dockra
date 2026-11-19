@@ -13,6 +13,7 @@ from accounts.authentication import hash_key, issue_access, revoke_sessions
 from accounts import security
 from accounts.models import ApiToken, Membership, TwoFactor
 from accounts.present import user_payload
+from config.i18n import tr
 
 User = get_user_model()
 
@@ -27,25 +28,25 @@ class LoginView(APIView):
         wait = security.retry_after(keys)
         if wait:
             return Response(
-                {"detail": f"Too many failed attempts; try again in {wait} seconds", "retry_after": wait},
+                {"detail": tr("Too many failed attempts; try again in {wait} seconds", wait=wait), "retry_after": wait},
                 status=429,
             )
         user = authenticate(request, username=username, password=request.data.get("password") or "")
         if user is None:
             security.record_failure(keys)
-            return Response({"detail": "Incorrect username or password"}, status=400)
+            return Response({"detail": tr("Incorrect username or password")}, status=400)
         two_factor = security.needs_otp(user)
         if two_factor is not None:
             otp = str(request.data.get("otp") or "")
             if not otp:
-                return Response({"detail": "Enter your two-factor code", "otp_required": True}, status=400)
+                return Response({"detail": tr("Enter your two-factor code"), "otp_required": True}, status=400)
             if not security.verify_totp(two_factor, otp):
                 security.record_failure(keys)
-                return Response({"detail": "Incorrect verification code", "otp_required": True}, status=400)
+                return Response({"detail": tr("Incorrect verification code"), "otp_required": True}, status=400)
         security.clear_failures(username)
         membership = Membership.objects.filter(user=user).select_related("organization").first()
         if membership is None:
-            return Response({"detail": "This user is not a member of any organization"}, status=403)
+            return Response({"detail": tr("This user is not a member of any organization")}, status=403)
         refresh = issue_access(user)
         return Response(
             {
@@ -88,9 +89,9 @@ class TokenListCreate(APIView):
             try:
                 days = int(days)
             except (TypeError, ValueError):
-                return Response({"detail": "Invalid expiry"}, status=400)
+                return Response({"detail": tr("Invalid expiry")}, status=400)
             if not 1 <= days <= 3650:
-                return Response({"detail": "Expiry must be between 1 and 3650 days"}, status=400)
+                return Response({"detail": tr("Expiry must be between 1 and 3650 days")}, status=400)
             expires_at = timezone.now() + timedelta(days=days)
         raw = "dockra_" + secrets.token_urlsafe(32)
         token = ApiToken.objects.create(
@@ -126,7 +127,7 @@ def member_payload(item: Membership, request) -> dict:
         "username": item.user.username,
         "name": item.user.get_full_name() or item.user.username,
         "role": item.role,
-        "role_label": item.get_role_display(),
+        "role_label": tr(item.get_role_display()),
         "is_active": item.user.is_active,
         "is_self": item.user_id == request.user.id,
     }
@@ -148,15 +149,15 @@ class MemberListCreate(APIView):
         password = request.data.get("password") or ""
         role = request.data.get("role") or Membership.Role.DEVELOPER
         if role not in ASSIGNABLE_ROLES:
-            return Response({"detail": "Invalid role"}, status=400)
+            return Response({"detail": tr("Invalid role")}, status=400)
         if not username:
-            return Response({"detail": "Username is required"}, status=400)
+            return Response({"detail": tr("Username is required")}, status=400)
         try:
             validate_password(password)
         except ValidationError as exc:
             return Response({"detail": " ".join(exc.messages)}, status=400)
         if User.objects.filter(username=username).exists():
-            return Response({"detail": "This username already exists"}, status=400)
+            return Response({"detail": tr("This username already exists")}, status=400)
         user = User.objects.create_user(
             username=username,
             password=password,
@@ -191,13 +192,13 @@ class MemberDetail(APIView):
             Membership.objects.filter(organization=request.membership.organization, pk=pk).select_related("user").first()
         )
         if member is None:
-            return None, Response({"detail": "Member not found"}, status=404)
+            return None, Response({"detail": tr("Member not found")}, status=404)
         if member.user_id == request.user.id:
-            return None, Response({"detail": "Change your own account from personal settings"}, status=400)
+            return None, Response({"detail": tr("Change your own account from personal settings")}, status=400)
         if member.role == Membership.Role.OWNER:
-            return None, Response({"detail": "The organization owner cannot be changed"}, status=403)
+            return None, Response({"detail": tr("The organization owner cannot be changed")}, status=403)
         if member.role == Membership.Role.ADMIN and request.membership.role != Membership.Role.OWNER:
-            return None, Response({"detail": "Only the owner can change admins"}, status=403)
+            return None, Response({"detail": tr("Only the owner can change admins")}, status=403)
         return member, None
 
     def patch(self, request, pk):
@@ -207,9 +208,9 @@ class MemberDetail(APIView):
         if "role" in request.data:
             role = request.data.get("role")
             if role not in ASSIGNABLE_ROLES:
-                return Response({"detail": "Invalid role"}, status=400)
+                return Response({"detail": tr("Invalid role")}, status=400)
             if role == Membership.Role.ADMIN and request.membership.role != Membership.Role.OWNER:
-                return Response({"detail": "Only the owner can grant the admin role"}, status=403)
+                return Response({"detail": tr("Only the owner can grant the admin role")}, status=403)
             member.role = role
             member.save(update_fields=["role"])
             _audit(request, "role changed", member.user.username, role)
@@ -273,7 +274,7 @@ class PasswordChange(APIView):
 
     def post(self, request):
         if not request.user.check_password(request.data.get("old_password") or ""):
-            return Response({"detail": "Current password is incorrect"}, status=400)
+            return Response({"detail": tr("Current password is incorrect")}, status=400)
         new = request.data.get("new_password") or ""
         try:
             validate_password(new, request.user)
@@ -298,7 +299,7 @@ class TwoFactorSetup(APIView):
     def post(self, request):
         row = TwoFactor.objects.filter(user=request.user).first()
         if row and row.enabled:
-            return Response({"detail": "Two-factor authentication is already enabled; disable it first"}, status=400)
+            return Response({"detail": tr("Two-factor authentication is already enabled; disable it first")}, status=400)
         secret = security.new_secret()
         TwoFactor.objects.update_or_create(
             user=request.user, defaults={"secret": secret, "enabled": False, "recovery_hashes": [], "last_step": 0}
@@ -312,10 +313,10 @@ class TwoFactorConfirm(APIView):
     def post(self, request):
         row = TwoFactor.objects.filter(user=request.user, enabled=False).first()
         if row is None:
-            return Response({"detail": "Start the setup first"}, status=400)
+            return Response({"detail": tr("Start the setup first")}, status=400)
         codes = security.confirm(row, str(request.data.get("code") or ""))
         if codes is None:
-            return Response({"detail": "Incorrect code; check the clock on your phone"}, status=400)
+            return Response({"detail": tr("Incorrect code; check the clock on your phone")}, status=400)
         return Response({"enabled": True, "recovery_codes": codes})
 
 
@@ -327,8 +328,8 @@ class TwoFactorDisable(APIView):
         if row is None:
             return Response({"enabled": False})
         if not request.user.check_password(request.data.get("password") or ""):
-            return Response({"detail": "Incorrect password"}, status=400)
+            return Response({"detail": tr("Incorrect password")}, status=400)
         if not security.verify_totp(row, str(request.data.get("code") or "")):
-            return Response({"detail": "Incorrect verification code"}, status=400)
+            return Response({"detail": tr("Incorrect verification code")}, status=400)
         row.delete()
         return Response({"enabled": False})

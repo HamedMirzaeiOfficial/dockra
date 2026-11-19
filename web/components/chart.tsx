@@ -2,6 +2,7 @@
 
 import { KeyboardEvent, PointerEvent, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui";
+import { intlLocale, t } from "@/lib/i18n";
 import { fmt } from "@/lib/format";
 
 // v is null where nothing was measured; the line breaks there instead of dropping to zero.
@@ -26,8 +27,8 @@ function num(value: number | null) {
 function timeLabel(iso: string, long: boolean) {
   const date = new Date(iso);
   return long
-    ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    ? date.toLocaleDateString(intlLocale(), { month: "short", day: "numeric" })
+    : date.toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 export function TrendChart({
@@ -112,13 +113,13 @@ export function TrendChart({
           </span>
         )}
       </div>
-      <div ref={box} className={`relative mt-3 transition-opacity duration-200 ${dim ? "opacity-50" : ""}`}>
+      <div ref={box} dir="ltr" className={`relative mt-3 transition-opacity duration-200 ${dim ? "opacity-50" : ""}`}>
         {width > 0 && (
           <svg
             width={width}
             height={HEIGHT}
             role="img"
-            aria-label={`${title}, latest value ${last ? num(last.v) : "—"} ${unit}`}
+            aria-label={t("{title}, latest value {value} {unit}", { title, value: last ? num(last.v) : "—", unit })}
             tabIndex={0}
             className="block touch-none outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-md"
             onPointerMove={onMove}
@@ -175,7 +176,7 @@ export function TrendChart({
               <span className="font-semibold text-fg">{num(active.v)}</span>
               {active.v !== null && <span className="text-muted">{unit}</span>}
             </div>
-            <div className="mt-0.5 whitespace-nowrap text-muted">{new Date(active.t).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}</div>
+            <div className="mt-0.5 whitespace-nowrap text-muted">{new Date(active.t).toLocaleString(intlLocale(), { dateStyle: "short", timeStyle: "short" })}</div>
           </div>
         )}
       </div>
@@ -184,7 +185,7 @@ export function TrendChart({
         <tbody>
           {points.map((p) => (
             <tr key={p.t}>
-              <td>{new Date(p.t).toLocaleString("en-US")}</td>
+              <td>{new Date(p.t).toLocaleString(intlLocale())}</td>
               <td>{p.v === null ? "—" : `${num(p.v)} ${unit}`}</td>
             </tr>
           ))}

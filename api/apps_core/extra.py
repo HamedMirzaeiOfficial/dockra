@@ -24,6 +24,7 @@ from audit.models import AuditLog
 from engine import blobs
 from engine.actions import deploy_app
 from engine.resources import QuotaExceeded
+from config.i18n import tr
 
 MAX_BLOB_BATCH = 2 * 1024 ** 3
 
@@ -65,13 +66,13 @@ class BlobUpload(APIView):
         _app(request, slug)
         length = int(request.META.get("CONTENT_LENGTH") or 0)
         if length <= 0:
-            return Response({"detail": "Request body is empty"}, status=400)
+            return Response({"detail": tr("Request body is empty")}, status=400)
         if length > MAX_BLOB_BATCH:
-            return Response({"detail": "Each bundle is limited to 2 GB"}, status=413)
+            return Response({"detail": tr("Each bundle is limited to 2 GB")}, status=413)
         try:
             stored = blobs.store_tar(request.stream)
         except (blobs.TreeError, tarfile.TarError, EOFError, OSError) as exc:
-            return Response({"detail": f"File bundle is corrupt: {exc}"}, status=400)
+            return Response({"detail": tr("File bundle is corrupt: {exc}", exc=exc)}, status=400)
         return Response({"stored": stored})
 
 
@@ -100,7 +101,7 @@ class LogTicket(APIView):
 
         app = _app(request, slug)
         if not _terminal_up():
-            return Response({"detail": "The live log service is unavailable"}, status=503)
+            return Response({"detail": tr("The live log service is unavailable")}, status=503)
         try:
             tail = max(0, min(int(request.query_params.get("tail") or 200), 5000))
         except ValueError:
@@ -125,7 +126,7 @@ class LogArchiveRead(APIView):
         app = _app(request, slug)
         path = archive_path(app.slug, name)
         if path is None:
-            return Response({"detail": "Log not found"}, status=404)
+            return Response({"detail": tr("Log not found")}, status=404)
         def chunks():
             buf = []
             size = 0
@@ -149,7 +150,7 @@ class LogSearch(APIView):
         app = _app(request, slug)
         query = (request.query_params.get("q") or "").strip()
         if len(query) < 2:
-            return Response({"detail": "Search needs at least two characters"}, status=400)
+            return Response({"detail": tr("Search needs at least two characters")}, status=400)
         try:
             limit = max(1, min(int(request.query_params.get("limit") or 500), 2000))
         except ValueError:
@@ -169,7 +170,7 @@ class ExecView(APIView):
         app = _app(request, slug)
         command = str(request.data.get("command") or "").strip()
         if not command:
-            return Response({"detail": "Command is empty"}, status=400)
+            return Response({"detail": tr("Command is empty")}, status=400)
         cwd = str(request.data.get("cwd") or "").strip()
         script = command
         if cwd:
@@ -204,7 +205,7 @@ class WebhookView(APIView):
     def post(self, request, slug):
         app = _app(request, slug)
         if not app.git_url:
-            return Response({"detail": "Set the Git repository URL in the app settings first"}, status=400)
+            return Response({"detail": tr("Set the Git repository URL in the app settings first")}, status=400)
         secret = secrets.token_urlsafe(24)
         app.webhook_secret = secret
         app.save(update_fields=["webhook_secret"])
@@ -244,7 +245,7 @@ class HookReceive(APIView):
         app = App.objects.filter(slug=slug).first()
         body = request.body
         if app is None or not _hook_authorized(request, app.webhook_secret, body):
-            return Response({"detail": "Invalid webhook signature"}, status=403)
+            return Response({"detail": tr("Invalid webhook signature")}, status=403)
         event = request.META.get("HTTP_X_GITHUB_EVENT") or request.META.get("HTTP_X_GITEA_EVENT") or ""
         if event == "ping":
             return Response({"ok": True, "pong": True})
@@ -256,7 +257,7 @@ class HookReceive(APIView):
         if app.git_branch and ref and ref != f"refs/heads/{app.git_branch}":
             return Response({"ok": True, "skipped": f"branch {ref} does not match {app.git_branch}"})
         if not app.git_url:
-            return Response({"detail": "The app has no Git URL"}, status=400)
+            return Response({"detail": tr("The app has no Git URL")}, status=400)
         commit = payload.get("head_commit") or {}
         sha = str(payload.get("after") or commit.get("id") or "")[:7]
         title = str(commit.get("message") or "").splitlines()[0][:150] if commit.get("message") else ""
@@ -288,7 +289,7 @@ def _inside(root: Path, raw: str) -> Path:
     rel = str(raw or "").replace("\\", "/").strip("/")
     target = (root / rel).resolve() if rel else root
     if target != root and root not in target.parents:
-        raise PermissionError("Path is outside the disk")
+        raise PermissionError(tr("Path is outside the disk"))
     return target
 
 
@@ -320,7 +321,7 @@ class DiskFiles(APIView):
         except PermissionError as exc:
             return Response({"detail": str(exc)}, status=400)
         if not target.is_dir():
-            return Response({"detail": "Folder not found"}, status=404)
+            return Response({"detail": tr("Folder not found")}, status=404)
         entries = []
         for item in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
             try:
@@ -345,13 +346,13 @@ class DiskFiles(APIView):
         except PermissionError as exc:
             return Response({"detail": str(exc)}, status=400)
         if target == root:
-            return Response({"detail": "The disk root cannot be deleted"}, status=400)
+            return Response({"detail": tr("The disk root cannot be deleted")}, status=400)
         if target.is_dir() and not target.is_symlink():
             shutil.rmtree(target)
         elif target.exists() or target.is_symlink():
             target.unlink()
         else:
-            return Response({"detail": "File not found"}, status=404)
+            return Response({"detail": tr("File not found")}, status=404)
         _audit(request, "disk file deleted", app.slug, f"{name}:{_rel(root, target.parent)}/{target.name}")
         return Response(status=204)
 
@@ -359,7 +360,7 @@ class DiskFiles(APIView):
 class DiskDownload(APIView):
     def get(self, request, slug, name):
         if request.membership.role == "viewer":
-            return Response({"detail": "Viewers cannot download files"}, status=403)
+            return Response({"detail": tr("Viewers cannot download files")}, status=403)
         app = _app(request, slug)
         root = _disk_root(app, name, request)
         try:
@@ -369,7 +370,7 @@ class DiskDownload(APIView):
         if target.is_file():
             return FileResponse(target.open("rb"), as_attachment=True, filename=target.name)
         if not target.is_dir():
-            return Response({"detail": "File not found"}, status=404)
+            return Response({"detail": tr("File not found")}, status=404)
         from engine.volumes import data_root
 
         folder = data_root() / "tmp"
@@ -421,7 +422,7 @@ class DiskUpload(APIView):
                     for member in archive:
                         archive.extract(member, target, filter="data")
             except (tarfile.TarError, EOFError, OSError) as exc:
-                return Response({"detail": f"Invalid archive: {exc}"}, status=400)
+                return Response({"detail": tr("Invalid archive: {exc}", exc=exc)}, status=400)
             finally:
                 uploaded.unlink(missing_ok=True)
             _give_to_app(target)
@@ -430,7 +431,7 @@ class DiskUpload(APIView):
         if content_type.startswith("multipart/"):
             upload = request.FILES.get("file")
             if upload is None:
-                return Response({"detail": "No file was sent"}, status=400)
+                return Response({"detail": tr("No file was sent")}, status=400)
             filename = re.sub(r"[/\\\x00]", "_", Path(upload.name).name) or "upload"
             dest = target / filename
             with dest.open("wb") as handle:
@@ -444,7 +445,7 @@ class DiskUpload(APIView):
                 for member in archive:
                     archive.extract(member, target, filter="data")
         except (tarfile.TarError, EOFError, OSError) as exc:
-            return Response({"detail": f"Invalid archive: {exc}"}, status=400)
+            return Response({"detail": tr("Invalid archive: {exc}", exc=exc)}, status=400)
         _give_to_app(target)
         _audit(request, "disk folder uploaded", app.slug, f"{name}:{_rel(root, target)}")
         return Response({"ok": True, "path": _rel(root, target)})
@@ -475,10 +476,10 @@ class DiskImport(APIView):
             try:
                 options.update(json.loads(request.stream.read(1 << 16) or b"{}"))
             except (ValueError, TypeError):
-                return Response({"detail": "Invalid JSON"}, status=400)
+                return Response({"detail": tr("Invalid JSON")}, status=400)
         replace = str(options.get("replace") or "").lower() in ("1", "true", "yes")
         if replace and ROLE_RANK[request.membership.role] < ROLE_RANK["admin"]:
-            return Response({"detail": "Replacing the whole disk requires the admin role"}, status=403)
+            return Response({"detail": tr("Replacing the whole disk requires the admin role")}, status=403)
         payload = {"disk_id": disk.id, "replace": replace}
         try:
             if options.get("ftp"):
@@ -504,7 +505,7 @@ class DiskImport(APIView):
             elif "url" not in payload:
                 length = int(request.META.get("CONTENT_LENGTH") or 0)
                 if length <= 0:
-                    return Response({"detail": "An archive, url or ftp is required"}, status=400)
+                    return Response({"detail": tr("An archive, url or ftp is required")}, status=400)
                 written = 0
                 with dest.open("wb") as handle:
                     while written < length:
@@ -515,7 +516,7 @@ class DiskImport(APIView):
                         written += len(chunk)
                 if written != length:
                     dest.unlink(missing_ok=True)
-                    return Response({"detail": "Upload is incomplete; please try again"}, status=400)
+                    return Response({"detail": tr("Upload is incomplete; please try again")}, status=400)
         job = enqueue(Job.Kind.DISK_IMPORT, payload, request.user, app.organization)
         return Response({"job": job_payload(job)}, status=202)
 
@@ -535,7 +536,7 @@ class AlertList(APIView):
                     "app": item.app.slug if item.app else None,
                     "app_name": item.app.name if item.app else None,
                     "kind": item.kind,
-                    "kind_label": item.get_kind_display(),
+                    "kind_label": tr(item.get_kind_display()),
                     "message": item.message,
                     "status": item.status,
                     "started_at": item.started_at.isoformat(),
@@ -567,9 +568,9 @@ class TerminalTicket(APIView):
 
         app = _app(request, slug)
         if app.status != App.Status.RUNNING:
-            return Response({"detail": "The app is not running"}, status=400)
+            return Response({"detail": tr("The app is not running")}, status=400)
         if not _terminal_up():
-            return Response({"detail": "The terminal service is unavailable"}, status=503)
+            return Response({"detail": tr("The terminal service is unavailable")}, status=503)
         ticket = make_ticket("terminal", request.user.id, app.id)
         return Response({"ticket": ticket, "url": public_url(request, "terminal", ticket)})
 
@@ -581,8 +582,8 @@ class TunnelTicket(APIView):
 
         database = get_object_or_404(Database, organization=request.membership.organization, pk=pk)
         if database.status != Database.Status.RUNNING:
-            return Response({"detail": "The database is not running"}, status=400)
+            return Response({"detail": tr("The database is not running")}, status=400)
         if not _terminal_up():
-            return Response({"detail": "The terminal service is unavailable"}, status=503)
+            return Response({"detail": tr("The terminal service is unavailable")}, status=503)
         ticket = make_ticket("tunnel", request.user.id, database.id)
         return Response({"ticket": ticket, "url": public_url(request, "tunnel", ticket)})

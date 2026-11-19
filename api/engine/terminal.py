@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from django.conf import settings
 from django.core import signing
+from config.i18n import tr
 
 SALT = "dockra-terminal"
 TICKET_SECONDS = 60
@@ -221,7 +222,7 @@ async def _tunnel(ws, target: tuple[str, int]) -> None:
     try:
         reader, writer = await asyncio.wait_for(asyncio.open_connection(*target), 10)
     except (OSError, asyncio.TimeoutError) as exc:
-        await ws.send(json.dumps({"type": "error", "detail": f"Could not connect to the database: {exc}"}))
+        await ws.send(json.dumps({"type": "error", "detail": tr("Could not connect to the database: {exc}", exc=exc)}))
         return
 
     async def up():
@@ -302,7 +303,7 @@ async def handle(ws) -> None:
     ticket = (parse_qs(parts.query).get("ticket") or [""])[0]
     data = read_ticket(ticket)
     if data is None or data.get("k") != kind or kind not in ("terminal", "tunnel", "logs"):
-        await ws.send(json.dumps({"type": "error", "detail": "Invalid or expired ticket"}))
+        await ws.send(json.dumps({"type": "error", "detail": tr("Invalid or expired ticket")}))
         return
     if kind == "logs":
         app, error = await _db(_load_logs, data)

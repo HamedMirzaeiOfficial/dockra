@@ -19,6 +19,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 from engine.dumps import DumpError, ensure_public
+from config.i18n import tr
 
 PROGRESS_SECONDS = 5
 LIARA_WRAPPER = re.compile(r"[\w.-]+-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(-\d+)?")
@@ -31,11 +32,11 @@ class DiskImportError(RuntimeError):
 def _inside(root: Path, rel: str) -> Path:
     parts = [part for part in PurePosixPath(rel.replace("\\", "/")).parts if part not in ("", ".", "/")]
     if not parts or ".." in parts:
-        raise DiskImportError(f"Invalid path in archive: {rel}")
+        raise DiskImportError(tr("Invalid path in archive: {rel}", rel=rel))
     target = root.joinpath(*parts)
     resolved = target.resolve()
     if resolved != root and root not in resolved.parents:
-        raise DiskImportError(f"Path outside the disk: {rel}")
+        raise DiskImportError(tr("Path outside the disk: {rel}", rel=rel))
     return target
 
 
@@ -115,7 +116,7 @@ def import_archive(src: Path, root: Path, step, own: tuple[str, ...] = ()) -> di
                         files += 1
                         total += member.size
         except tarfile.TarError as exc:
-            raise DiskImportError(f"Invalid archive (tar, tar.gz or zip): {exc}") from exc
+            raise DiskImportError(tr("Invalid archive (tar, tar.gz or zip): {exc}", exc=exc)) from exc
     step(f"Extracted {files} files ({total / 1_048_576:.1f} MB)")
     return {"files": files, "bytes": total, "skipped": 0, "failed": 0}
 
@@ -124,7 +125,7 @@ def _check_space(root: Path, need: int) -> None:
     free = shutil.disk_usage(root).free
     if need > free:
         raise DiskImportError(
-            f"Not enough disk space: {need / 1e9:.2f} GB needed and {free / 1e9:.2f} GB free; grow the disk first"
+            tr("Not enough disk space: {value} GB needed and {value2} GB free; grow the disk first", value=f"{need / 1e9:.2f}", value2=f"{free / 1e9:.2f}")
         )
 
 
@@ -134,7 +135,7 @@ def _check_space(root: Path, need: int) -> None:
 def parse_ftp(url: str) -> dict:
     parts = urlsplit(url)
     if parts.scheme not in ("ftp", "ftps") or not parts.hostname:
-        raise DiskImportError("The FTP URL must look like ftp://user:pass@host/path or ftps://...")
+        raise DiskImportError(tr("The FTP URL must look like ftp://user:pass@host/path or ftps://..."))
     try:
         ensure_public(parts.hostname)
     except DumpError as exc:
@@ -188,7 +189,7 @@ def _check_path(ftp: ftplib.FTP, path: str) -> None:
     shown = ", ".join(names[:8]) + ("…" if len(names) > 8 else "")
     hint = f"; at the FTP root: {shown}" if names else ""
     raise DiskImportError(
-        f"{path} does not exist on the FTP server. The FTP root (/) is usually the disk itself, not the path inside the container{hint}"
+        tr("{path} does not exist on the FTP server. The FTP root (/) is usually the disk itself, not the path inside the container{hint}", path=path, hint=hint)
     )
 
 
@@ -248,7 +249,7 @@ def probe_ftp(url: str) -> None:
     try:
         ftp = _connect(cfg)
     except (OSError, ftplib.Error) as exc:
-        raise DiskImportError(f"FTP connection failed: {exc}") from exc
+        raise DiskImportError(tr("FTP connection failed: {exc}", exc=exc)) from exc
     try:
         _check_path(ftp, cfg["path"])
     finally:
@@ -265,7 +266,7 @@ def import_ftp(url: str, root: Path, step, workers: int = 8) -> dict:
     try:
         lister = _connect(cfg)
     except (OSError, ftplib.Error) as exc:
-        raise DiskImportError(f"FTP connection failed: {exc}") from exc
+        raise DiskImportError(tr("FTP connection failed: {exc}", exc=exc)) from exc
     if cfg.get("plain_fallback"):
         step("The FTP server does not support AUTH TLS; continuing without TLS")
     try:
@@ -349,7 +350,7 @@ def import_ftp(url: str, root: Path, step, workers: int = 8) -> dict:
     for line in failed[:5]:
         step(f"warning: {line[:300]}")
     if failed and not done["files"]:
-        raise DiskImportError(f"No files were transferred; {len(failed)} errors")
+        raise DiskImportError(tr("No files were transferred; {count} errors", count=len(failed)))
     if len(failed) > 5:
         step(f"… and {len(failed) - 5} more files failed; run again to fetch only those")
     return {"files": done["files"], "bytes": done["bytes"], "skipped": skipped, "failed": len(failed)}

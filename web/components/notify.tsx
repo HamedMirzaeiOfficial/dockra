@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Icon, type IconName } from "@/components/icons";
 import { Button } from "@/components/ui";
+import { t } from "@/lib/i18n";
 
 // Toasts (bottom right) and a confirm dialog instead of window.confirm; callable anywhere in the panel without a Provider,
 // NotifyHost renders them once in the layout.
@@ -69,7 +70,7 @@ export const notify = {
 
 /** Turn any error into a displayable message and show it. */
 export function notifyError(err: unknown) {
-  push("error", err instanceof Error ? err.message : typeof err === "string" ? err : "Something went wrong");
+  push("error", err instanceof Error ? err.message : typeof err === "string" ? err : t("Something went wrong"));
 }
 
 export function confirmAction(options: { title: string; message?: string; confirmLabel?: string; danger?: boolean }): Promise<boolean> {
@@ -80,7 +81,7 @@ export function confirmAction(options: { title: string; message?: string; confir
         id: nextId++,
         title: options.title,
         message: options.message,
-        confirmLabel: options.confirmLabel || "Confirm",
+        confirmLabel: options.confirmLabel || t("Confirm"),
         danger: options.danger ?? true,
         resolve,
       },
@@ -134,14 +135,14 @@ function ToastCard({ toast }: { toast: Toast }) {
       </p>
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("Close")}
         onClick={() => dismiss(toast.id)}
         className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted transition-colors duration-150 hover:bg-fg/[0.06] hover:text-fg"
       >
         <Icon name="close" size={14} />
       </button>
       <span
-        className={`sd-toast-bar absolute bottom-0 left-0 h-0.5 w-full origin-left opacity-60 ${tone.bar}`}
+        className={`sd-toast-bar absolute bottom-0 start-0 h-0.5 w-full origin-left opacity-60 rtl:origin-right ${tone.bar}`}
         style={{ animationDuration: `${LIFETIME[toast.tone]}ms`, animationPlayState: paused ? "paused" : "running" }}
       />
     </div>
@@ -206,7 +207,7 @@ function ConfirmDialog({ ask }: { ask: Ask }) {
             {ask.confirmLabel}
           </Button>
           <Button ref={cancelRef} type="button" tone="ghost" className="flex-1 sm:flex-none" onClick={() => answer(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
         </div>
       </div>
@@ -220,7 +221,7 @@ export function NotifyHost() {
     <>
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-4 bottom-4 z-[70] flex flex-col items-stretch gap-2 sm:inset-x-auto sm:left-5 sm:bottom-5 sm:items-start"
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-[70] flex flex-col items-stretch gap-2 sm:inset-x-auto sm:start-5 sm:bottom-5 sm:items-start"
       >
         {state.toasts.map((toast) => (
           <ToastCard key={toast.id} toast={toast} />

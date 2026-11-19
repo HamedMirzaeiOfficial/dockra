@@ -1,3 +1,4 @@
+import { getLang, t } from "@/lib/i18n";
 export const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export const TOKEN_KEY = "dockra_token";
@@ -9,7 +10,9 @@ export function getToken() {
 
 export function authHeaders(): Record<string, string> {
   const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: Record<string, string> = { "Accept-Language": getLang() };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
 }
 
 const memory = new Map<string, unknown>();
@@ -36,6 +39,8 @@ export class ApiError extends Error {
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
+  // The API answers messages (errors, status labels) in the panel language.
+  headers.set("Accept-Language", getLang());
   const token = getToken();
   // A stale token must not break login itself.
   if (token && !path.includes("/auth/login")) headers.set("Authorization", `Bearer ${token}`);
@@ -47,19 +52,19 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     memory.clear();
     localStorage.removeItem(TOKEN_KEY);
     window.location.href = "/login";
-    throw new Error("Please sign in again");
+    throw new Error(t("Please sign in again"));
   }
   const text = await res.text();
   let data = null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
-    if (res.ok) throw new ApiError("Invalid response from the server", res.status, null);
+    if (res.ok) throw new ApiError(t("Invalid response from the server"), res.status, null);
   }
   if (!res.ok) {
     const detail = data?.detail;
     // A proxy or crashed API answers with an HTML page; say what happened instead of a parse error.
-    const fallback = res.status >= 500 ? `Server error (HTTP ${res.status}); check the api service logs` : `Request failed (HTTP ${res.status})`;
+    const fallback = res.status >= 500 ? t("Server error (HTTP {status}); check the api service logs", { status: res.status }) : t("Request failed (HTTP {status})", { status: res.status });
     throw new ApiError(typeof detail === "string" ? detail : fallback, res.status, data);
   }
   if (!init.method || init.method === "GET") memory.set(path, data);
@@ -71,7 +76,7 @@ export async function download(path: string, fallback = "download") {
   const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    throw new Error(typeof data?.detail === "string" ? data.detail : "Download failed");
+    throw new Error(typeof data?.detail === "string" ? data.detail : t("Download failed"));
   }
   const disposition = res.headers.get("Content-Disposition") || "";
   const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
@@ -104,9 +109,9 @@ export function upload<T>(path: string, body: Blob, onProgress?: (fraction: numb
         data = null;
       }
       if (xhr.status >= 200 && xhr.status < 300) resolve(data as T);
-      else reject(new ApiError(typeof data?.detail === "string" ? data.detail : `Upload failed (HTTP ${xhr.status})`, xhr.status, data));
+      else reject(new ApiError(typeof data?.detail === "string" ? data.detail : t("Upload failed (HTTP {status})", { status: xhr.status }), xhr.status, data));
     };
-    xhr.onerror = () => reject(new Error("Connection lost; please try again"));
+    xhr.onerror = () => reject(new Error(t("Connection lost; please try again")));
     xhr.send(body);
   });
 }
