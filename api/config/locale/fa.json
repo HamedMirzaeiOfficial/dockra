@@ -177,6 +177,7 @@
   "Succeeded": "موفق",
   "The CLI file is not available on this server": "فایل CLI روی این سرور موجود نیست",
   "The FTP URL must look like ftp://user:pass@host/path or ftps://...": "آدرس FTP باید شبیه ftp://user:pass@host/path یا ftps://... باشد",
+  "The FTP server does not support TLS (AUTH TLS was rejected: {exc}). If it really has no TLS, use an ftp:// address instead; the password is then sent unencrypted.": "سرور FTP از TLS پشتیبانی نمی‌کند (AUTH TLS رد شد: {exc}). اگر این سرور واقعاً TLS ندارد، به‌جای آن آدرس ftp:// را وارد کنید؛ در این حالت رمز بدون رمزنگاری فرستاده می‌شود.",
   "The ID may only contain lowercase letters, digits and dashes": "شناسه فقط می‌تواند حروف کوچک انگلیسی، عدد و خط تیره داشته باشد",
   "The URL must be http or https": "آدرس باید http یا https باشد",
   "The app and disk names are too long together; choose a shorter disk name": "نام برنامه و دیسک روی هم خیلی بلند است؛ نام کوتاه‌تری برای دیسک انتخاب کنید",

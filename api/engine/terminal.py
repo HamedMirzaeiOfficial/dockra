@@ -88,8 +88,13 @@ def _load_shell(data: dict):
 
     close_old_connections()
     app = App.objects.filter(pk=data["t"]).first()
-    member = Membership.objects.filter(user_id=data["u"]).select_related("user").first()
-    if app is None or member is None or member.organization_id != app.organization_id:
+    # The membership in the app's own organization: a user can belong to several, each with its own role.
+    member = (
+        Membership.objects.filter(user_id=data["u"], organization_id=app.organization_id).select_related("user").first()
+        if app is not None
+        else None
+    )
+    if app is None or member is None:
         return None, "Access denied"
     if member.role == Membership.Role.VIEWER:
         return None, "Viewers have no terminal access"
@@ -108,8 +113,10 @@ def _load_logs(data: dict):
 
     close_old_connections()
     app = App.objects.filter(pk=data["t"]).first()
-    member = Membership.objects.filter(user_id=data["u"]).first()
-    if app is None or member is None or member.organization_id != app.organization_id:
+    member = (
+        Membership.objects.filter(user_id=data["u"], organization_id=app.organization_id).first() if app is not None else None
+    )
+    if app is None or member is None:
         return None, "Access denied"
     return app, ""
 
@@ -123,8 +130,12 @@ def _load_db(data: dict):
 
     close_old_connections()
     database = Database.objects.filter(pk=data["t"]).first()
-    member = Membership.objects.filter(user_id=data["u"]).select_related("user").first()
-    if database is None or member is None or member.organization_id != database.organization_id:
+    member = (
+        Membership.objects.filter(user_id=data["u"], organization_id=database.organization_id).select_related("user").first()
+        if database is not None
+        else None
+    )
+    if database is None or member is None:
         return None, "Access denied"
     if member.role == Membership.Role.VIEWER:
         return None, "Viewers have no database access"

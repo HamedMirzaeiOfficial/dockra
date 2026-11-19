@@ -86,6 +86,56 @@ class TenantIsolationTests(_Base):
         self.assertEqual(self.outsider.post(f"/api/databases/{db['id']}/link", {"app": "shop"}, format="json").status_code, 404)
 
 
+
+@mock.patch("django.db.close_old_connections")
+class MultiOrganizationWebSocketTests(_Base):
+    """Terminal, live logs and tunnels use the membership of the target's own organization, not the user's first one."""
+
+    def setUp(self):
+        super().setUp()
+        from django.contrib.auth import get_user_model
+
+        other = Organization.objects.create(name="Other", slug="other")
+        self.user = get_user_model().objects.create_user("mallory", password="mallory-pass-1")
+        # Created first, so it is the user's "first" membership.
+        Membership.objects.create(organization=other, user=self.user, role=Membership.Role.OWNER)
+        self.home = Organization.objects.get(slug="dockra")
+        self.app = App.objects.get(slug="shop")
+        db = self.admin.post("/api/databases", {"name": "shop-db", "engine": "postgres"}, format="json").data
+        self.database_id = db["id"]
+
+    def _join(self, role):
+        Membership.objects.create(organization=self.home, user=self.user, role=role)
+
+    def test_developer_in_second_organization_gets_access(self, _close):
+        from engine import terminal
+
+        self._join(Membership.Role.DEVELOPER)
+        target = {"u": self.user.id, "t": self.app.id}
+        self.assertEqual(terminal._load_logs(target), (self.app, ""))
+        # The fake driver has no container: access passed and only the container is missing.
+        self.assertEqual(terminal._load_shell(target)[1], "The app container is not running")
+        address, error = terminal._load_db({"u": self.user.id, "t": self.database_id})
+        self.assertEqual(error, "")
+        self.assertIsNotNone(address)
+
+    def test_role_comes_from_the_targets_organization(self, _close):
+        from engine import terminal
+
+        # Owner elsewhere, viewer here: the viewer role applies.
+        self._join(Membership.Role.VIEWER)
+        self.assertEqual(terminal._load_shell({"u": self.user.id, "t": self.app.id})[1], "Viewers have no terminal access")
+        self.assertEqual(terminal._load_db({"u": self.user.id, "t": self.database_id})[1], "Viewers have no database access")
+
+    def test_non_member_is_still_denied(self, _close):
+        from engine import terminal
+
+        target = {"u": self.user.id, "t": self.app.id}
+        self.assertEqual(terminal._load_logs(target)[1], "Access denied")
+        self.assertEqual(terminal._load_shell(target)[1], "Access denied")
+        self.assertEqual(terminal._load_db({"u": self.user.id, "t": self.database_id})[1], "Access denied")
+        self.assertEqual(terminal._load_logs({"u": self.user.id, "t": 999999})[1], "Access denied")
+
 @override_settings(DOCKRA_EAGER=False)
 class JobConcurrencyTests(_Base):
     def test_two_deploys_of_one_app_never_run_together(self):

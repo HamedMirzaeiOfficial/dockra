@@ -79,6 +79,12 @@ class FakeFTP:
 class PlainOnlyFTP(FakeFTP):
     """Like some hosting providers' FTP: advertises an "FTPS" port but rejects AUTH."""
 
+    logins: list[str] = []
+
+    def login(self, user, password):
+        PlainOnlyFTP.logins.append(user)
+        super().login(user, password)
+
     def auth(self):
         import ftplib
 
@@ -231,14 +237,28 @@ class DiskImportTests(TestCase):
     @mock.patch("engine.disk_import.ensure_public")
     @mock.patch("engine.disk_import.ftplib.FTP", FakeFTP)
     @mock.patch("engine.disk_import.ftplib.FTP_TLS", PlainOnlyFTP)
-    def test_liara_ftps_without_tls_and_wrong_path(self, _public):
+    def test_ftps_never_downgrades_to_plain_ftp(self, _public):
+        # A server (or an attacker on the path) rejecting AUTH TLS must not get the password over plain FTP.
+        PlainOnlyFTP.logins = []
         job = self._job(self.client.post("/api/apps/shop/disks/media/import", {"ftp": "ftps://liara:secret@ftp.example.com:2112/media"}, format="json"))
-        self.assertEqual(job["status"], "done", job)
+        self.assertEqual(job["status"], "failed", job)
         self.assertIn("TLS", job["log"])
+        self.assertIn("ftp://", job["log"])
+        self.assertEqual(PlainOnlyFTP.logins, [])
+
+        # Plain FTP chosen explicitly still works.
+        job = self._job(self.client.post("/api/apps/shop/disks/media/import", {"ftp": "ftp://liara:secret@ftp.example.com:2112/media"}, format="json"))
+        self.assertEqual(job["status"], "done", job)
         self.assertEqual(job["result"]["files"], 3)
 
+        # With replace, a rejected AUTH TLS fails the probe before the disk is touched.
+        job = self._job(self.client.post("/api/apps/shop/disks/media/import", {"ftp": "ftps://liara:secret@ftp.example.com:2112/media", "replace": True}, format="json"))
+        self.assertEqual(job["status"], "failed", job)
+        self.assertTrue((self.root / "a.jpg").exists())
+        self.assertEqual(PlainOnlyFTP.logins, [])
+
         # The mount path inside the container instead of the FTP root: a clear error, and with replace the disk is untouched.
-        res = self.client.post("/api/apps/shop/disks/media/import", {"ftp": "ftps://liara:secret@ftp.example.com:2112/usr/src/app/media", "replace": True}, format="json")
+        res = self.client.post("/api/apps/shop/disks/media/import", {"ftp": "ftp://liara:secret@ftp.example.com:2112/usr/src/app/media", "replace": True}, format="json")
         job = self._job(res)
         self.assertEqual(job["status"], "failed")
         self.assertIn("/usr/src/app/media", job["log"])

@@ -156,12 +156,13 @@ def _connect(cfg: dict) -> ftplib.FTP:
         ftp.connect(cfg["host"], cfg["port"])
         try:
             ftp.auth()
-        except ftplib.error_perm:
-            # Some providers' "FTPS access" is plain FTP in practice and rejects AUTH (500); other connections fall back to plain too.
+        except ftplib.error_perm as exc:
+            # Some providers' "FTPS access" is plain FTP in practice and rejects AUTH (500). Never fall back to plain FTP
+            # silently: anyone on the path could answer 500 and read the password. Plain FTP must be asked for with ftp://.
             ftp.close()
-            cfg["tls"] = False
-            cfg["plain_fallback"] = True
-            return _connect(cfg)
+            raise DiskImportError(
+                tr("The FTP server does not support TLS (AUTH TLS was rejected: {exc}). If it really has no TLS, use an ftp:// address instead; the password is then sent unencrypted.", exc=exc)
+            ) from exc
         ftp.login(cfg["user"], cfg["password"])
         ftp.prot_p()
     else:
@@ -267,8 +268,6 @@ def import_ftp(url: str, root: Path, step, workers: int = 8) -> dict:
         lister = _connect(cfg)
     except (OSError, ftplib.Error) as exc:
         raise DiskImportError(tr("FTP connection failed: {exc}", exc=exc)) from exc
-    if cfg.get("plain_fallback"):
-        step("The FTP server does not support AUTH TLS; continuing without TLS")
     try:
         _check_path(lister, cfg["path"])
         files = _walk(lister, cfg["path"])
