@@ -64,7 +64,7 @@ docker compose -p dockra-local --env-file .env.local -f docker-compose.yml -f do
 
 ```bash
 cd api
-python manage.py test                                   # ۱۷۹ تست، حدود ۲ دقیقه، بدون Docker
+python manage.py test                                   # ۱۸۲ تست، حدود ۲ دقیقه، بدون Docker
 python manage.py makemigrations --check --dry-run       # هماهنگی مدل‌ها و migrationها
 cd .. && ruff check api cli                             # lint (پیکربندی در pyproject.toml)
 

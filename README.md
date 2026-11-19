@@ -199,7 +199,7 @@ Read [security](docs/security.md) for the full threat model and the honest list 
 
 | Suite | Command | What it covers |
 | --- | --- | --- |
-| API unit and integration | `cd api && python manage.py test` | 179 tests: deployment lifecycle, cancel and rollback, failed-build recovery, concurrent job claiming, stale-worker recovery, RBAC and tenant isolation, secrets at rest, capacity admission, disk rules, backups and restore, imports, webhooks, SSRF guards, CLI login flow, response language |
+| API unit and integration | `cd api && python manage.py test` | 182 tests: deployment lifecycle, cancel and rollback, failed-build recovery, concurrent job claiming, stale-worker recovery, RBAC and tenant isolation, secrets at rest, capacity admission, disk rules, backups and restore, imports, webhooks, SSRF guards, CLI login flow, response language |
 | Migrations | `python manage.py makemigrations --check --dry-run` | models and migrations are in sync |
 | Lint | `ruff check api cli` | Python errors and unused code |
 | Dashboard | `cd web && npx tsc --noEmit && npm run i18n:check && npx next build` | type safety, translation coverage and production build |

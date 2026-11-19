@@ -57,7 +57,7 @@ Some actions need an answer **right now**: running a command in the console, rea
 - `DockerDriver`: on servers, through `subprocess` and the Docker CLI.
 - `FakeDriver`: for development and tests; it "pretends" to do the work.
 
-With `DOCKRA_DRIVER=fake` and `DOCKRA_EAGER=1`, jobs run immediately inside the request. That is why the whole product starts on a laptop without Docker and 179 tests run in two minutes. This is **ports and adapters**: the business logic (the runner) does not know whether a real Docker sits behind the driver.
+With `DOCKRA_DRIVER=fake` and `DOCKRA_EAGER=1`, jobs run immediately inside the request. That is why the whole product starts on a laptop without Docker and 182 tests run in two minutes. This is **ports and adapters**: the business logic (the runner) does not know whether a real Docker sits behind the driver.
 
 Why the Docker CLI and not the SDK? Because every command the platform runs shows up verbatim in a log, and a server operator can repeat it by hand. The cost: text output has to be parsed.
 

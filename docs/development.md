@@ -64,7 +64,7 @@ Then run the dashboard with `npm run dev` as above, pointing `NEXT_PUBLIC_API_UR
 
 ```bash
 cd api
-python manage.py test                                   # 179 tests, ~2 minutes, no Docker needed
+python manage.py test                                   # 182 tests, ~2 minutes, no Docker needed
 python manage.py makemigrations --check --dry-run       # models and migrations in sync
 cd .. && ruff check api cli                             # lint (configuration in pyproject.toml)
 

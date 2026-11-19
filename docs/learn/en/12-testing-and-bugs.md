@@ -4,7 +4,7 @@
 
 ## Goal of this chapter
 
-See how a platform that touches Docker, disks and the network is tested with 179 tests in two minutes, without Docker, and learn from the real bugs of this very project.
+See how a platform that touches Docker, disks and the network is tested with 182 tests in two minutes, without Docker, and learn from the real bugs of this very project.
 
 ## Dockra's test pyramid
 

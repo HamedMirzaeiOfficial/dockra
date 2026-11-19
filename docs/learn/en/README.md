@@ -32,6 +32,7 @@ You do not need to know Traefik, BuildKit, cgroups, WebSocket or Tailwind; the c
 | 11 | [A dependency-free CLI](11-cli.md) | standard library only, phishing-resistant browser login, resumable upload |
 | 12 | [Tests, CI and lessons from bugs](12-testing-and-bugs.md) | the fake driver, machine-independent tests, e2e, real bugs from this project |
 | 13 | [Going bilingual: i18n and right-to-left](13-i18n.md) | English text as the key, flash-free rendering, logical classes, API translation, automatic checks |
+| 14 | [Challenge stories: from symptom to lesson](14-challenge-stories.md) | twelve real challenges of this project as narratives: symptom, root cause, fix in the code, lesson |
 
 ## Suggested reading order
 
@@ -40,6 +41,7 @@ You do not need to know Traefik, BuildKit, cgroups, WebSocket or Tailwind; the c
 3. Read chapter 6 carefully; then look at the list of "what is not protected" in [security.md](../../security.md).
 4. Chapters 7 to 11 and 13 in whatever order interests you.
 5. Read chapter 12 last and run the tests yourself; break one on purpose.
+6. Read chapter 14 after chapter 12; its stories refer back to the earlier chapters.
 
 Every chapter ends with a few **exercises**. Actually do them; that is where most of the learning happens.
 
