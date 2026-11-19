@@ -1,0 +1,7 @@
+work
+media
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.git
+*.sqlite3

@@ -1,0 +1,72 @@
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Django runtime
+*.sqlite3
+*.sqlite3-journal
+static_root/
+staticfiles/
+api/media/
+api/work/
+api/var/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Secrets and local env (examples stay tracked)
+.env
+.admin-password
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Database dumps and backups
+*.dump
+*.sql.gz
+*.sql.bz2
+backups/
+
+# Logs, OS, editors
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# Local scratch
+.tmp_*
+*.tmp
+
+# Local demo data and test artifacts
+api/db.sqlite3
+playwright-report/
+test-results/

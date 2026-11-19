@@ -1,0 +1,357 @@
+services:
+  traefik:
+    # 3.6.1+ negotiates the Docker API version itself. 3.1 registers no routes with Docker 29.
+    image: traefik:v3.6.1
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=dockra
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # Traefik 3 reads a whole request within 60 seconds by default, which cuts large backup uploads; match gunicorn's timeout.
+      - --entrypoints.web.transport.respondingTimeouts.readTimeout=7200s
+      - --entrypoints.websecure.transport.respondingTimeouts.readTimeout=7200s
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      # Your own certificates (e.g. an internal wildcard): yml and pem files in /var/lib/dockra/certs
+      # Per-app request statistics for the worker; port 8082 is internal-network only and never published.
+      - --entrypoints.metrics.address=:8082
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entryPoint=metrics
+      - --metrics.prometheus.addServicesLabels=true
+      - --metrics.prometheus.addEntryPointsLabels=false
+      - --metrics.prometheus.buckets=0.005,0.01,0.025,0.05,0.1,0.25,0.5,1,2.5,5,10
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/letsencrypt
+      - /var/lib/dockra/certs:/etc/traefik/dynamic:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 128M
+    # Platform services may use idle cores and outweigh apps under contention (each app core is 2560).
+    # If host memory runs out the kernel kills apps first, then app databases (-500), and the platform last.
+    cpu_shares: 5120
+    oom_score_adj: -900
+    networks:
+      - dockra
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dockra
+      POSTGRES_USER: dockra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dockra -d dockra"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+    cpu_shares: 5120
+    oom_score_adj: -900
+    networks:
+      - dockra
+
+  api:
+    # One image for api, worker, builder and terminal; it is also the disk tool image (DOCKRA_TOOLS_IMAGE).
+    image: dockra-api
+    restart: unless-stopped
+    # Every .env setting reaches the container; the environment block below only sets constants or derived values.
+    env_file:
+      - path: .env
+        required: false
+    build:
+      context: ../api
+      args:
+        APT_MIRROR: ${DOCKRA_APT_MIRROR:-}
+        PIP_MIRROR: ${DOCKRA_PIP_INDEX_URL:-}
+    # gthread: a large upload or a live log occupies one thread, not the whole API.
+    command: sh -c "python manage.py migrate && python manage.py seed && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --worker-class gthread --workers 3 --threads 8 --timeout 7200 --graceful-timeout 60"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "0"
+      DATABASE_URL: postgres://dockra:${POSTGRES_PASSWORD}@db:5432/dockra
+      DOCKRA_DRIVER: docker
+      DOCKRA_EAGER: "0"
+      PUBLIC_IP: ${PUBLIC_IP}
+      DOCKRA_NETWORK: dockra
+      CORS_ALLOWED_ORIGINS: ${PANEL_ORIGIN}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
+      DOCKRA_TERMINAL_HOST: terminal
+      DOCKRA_CLI_DIR: /opt/dockra-cli
+      DOCKRA_APPS_DOMAIN: ${DOCKRA_APPS_DOMAIN:-}
+      DOCKRA_DNS_SERVERS: ${DOCKRA_DNS_SERVERS:-}
+      DOCKRA_TERMINAL_PUBLIC_URL: ${DOCKRA_TERMINAL_PUBLIC_URL:-}
+      DOCKRA_ADMIN_PASSWORD: ${DOCKRA_ADMIN_PASSWORD}
+      DOCKRA_HOST_CPU: ${DOCKRA_HOST_CPU:-0}
+      DOCKRA_HOST_MEMORY_MB: ${DOCKRA_HOST_MEMORY_MB:-0}
+      DOCKRA_HOST_DISK_GB: ${DOCKRA_HOST_DISK_GB:-0}
+      DOCKRA_RESERVED_CPU: ${DOCKRA_RESERVED_CPU:-1}
+      DOCKRA_RESERVED_MEMORY_MB: ${DOCKRA_RESERVED_MEMORY_MB:-2048}
+      DOCKRA_RESERVED_DISK_GB: ${DOCKRA_RESERVED_DISK_GB:-20}
+      DOCKRA_DATA_ROOT: /var/lib/dockra
+      DOCKRA_APT_MIRROR: ${DOCKRA_APT_MIRROR:-}
+      DOCKRA_PIP_INDEX_URL: ${DOCKRA_PIP_INDEX_URL:-}
+      DOCKRA_PIP_EXTRA_INDEX_URL: ${DOCKRA_PIP_EXTRA_INDEX_URL:-}
+      DOCKRA_PIP_FALLBACK_MIRROR: ${DOCKRA_PIP_FALLBACK_MIRROR:-}
+      DOCKRA_NPM_REGISTRY: ${DOCKRA_NPM_REGISTRY:-}
+      DOCKRA_ENCRYPTION_KEY: ${DOCKRA_ENCRYPTION_KEY:-}
+      DOCKRA_TELEGRAM_BOT_TOKEN: ${DOCKRA_TELEGRAM_BOT_TOKEN:-}
+      DOCKRA_TELEGRAM_CHAT_ID: ${DOCKRA_TELEGRAM_CHAT_ID:-}
+      DOCKRA_TELEGRAM_API: ${DOCKRA_TELEGRAM_API:-https://api.telegram.org}
+      DOCKRA_NOTIFY_WEBHOOK: ${DOCKRA_NOTIFY_WEBHOOK:-}
+      DOCKRA_AUTO_BACKUP_HOURS: ${DOCKRA_AUTO_BACKUP_HOURS:-24}
+      DOCKRA_BACKUP_KEEP: ${DOCKRA_BACKUP_KEEP:-3}
+      DOCKRA_DISK_BACKUP_HOURS: ${DOCKRA_DISK_BACKUP_HOURS:-24}
+      DOCKRA_DISK_BACKUP_KEEP: ${DOCKRA_DISK_BACKUP_KEEP:-3}
+    ports:
+      # With an HTTPS domain on Traefik, set API_BIND=127.0.0.1 so the raw port is closed to the outside.
+      - "${API_BIND:-0.0.0.0}:8000:8000"
+    volumes:
+      # The API has no access to docker.sock; Docker work is done by worker, builder and terminal.
+      # rslave: volumes mounted on the host later are visible inside the container too (disk file manager).
+      - /var/lib/dockra:/var/lib/dockra:rslave
+      - /proc:/host/proc:ro
+      # The CLI is installed from the server itself (/cli/install.sh); every git pull serves the repository version.
+      - ../cli:/opt/dockra-cli:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dockra-api.rule=Host(`${API_DOMAIN}`) || Host(`api.dockra.local`)
+      - traefik.http.routers.dockra-api.entrypoints=web
+      - traefik.http.routers.dockra-api.service=dockra-api
+      - traefik.http.routers.dockra-api-s.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.dockra-api-s.entrypoints=websecure
+      - traefik.http.routers.dockra-api-s.tls=true
+      - traefik.http.routers.dockra-api-s.tls.certresolver=${DOCKRA_TLS_RESOLVER-le}
+      - traefik.http.routers.dockra-api-s.service=dockra-api
+      - traefik.http.routers.dockra-api-s.middlewares=dockra-api-sec
+      - traefik.http.middlewares.dockra-api-sec.headers.stsSeconds=${DOCKRA_HSTS_SECONDS:-0}
+      - traefik.http.middlewares.dockra-api-sec.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.dockra-api-sec.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.services.dockra-api.loadbalancer.server.port=8000
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 768M
+    cpu_shares: 2560
+    oom_score_adj: -900
+    networks:
+      - dockra
+
+  # ops queue: start/stop, databases, backups, cron and periodic tasks. build is separate so it never waits.
+  worker:
+    # One image for api, worker, builder and terminal; it is also the disk tool image (DOCKRA_TOOLS_IMAGE).
+    image: dockra-api
+    restart: unless-stopped
+    # Every .env setting reaches the container; the environment block below only sets constants or derived values.
+    env_file:
+      - path: .env
+        required: false
+    build:
+      context: ../api
+      args:
+        APT_MIRROR: ${DOCKRA_APT_MIRROR:-}
+        PIP_MIRROR: ${DOCKRA_PIP_INDEX_URL:-}
+    command: sh -c "python manage.py migrate && exec python manage.py run_worker --queues ops"
+    environment: &worker_env
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "0"
+      DATABASE_URL: postgres://dockra:${POSTGRES_PASSWORD}@db:5432/dockra
+      DOCKRA_DRIVER: docker
+      DOCKRA_EAGER: "0"
+      PUBLIC_IP: ${PUBLIC_IP}
+      DOCKRA_NETWORK: dockra
+      DOCKRA_HOST_CPU: ${DOCKRA_HOST_CPU:-0}
+      DOCKRA_HOST_MEMORY_MB: ${DOCKRA_HOST_MEMORY_MB:-0}
+      DOCKRA_HOST_DISK_GB: ${DOCKRA_HOST_DISK_GB:-0}
+      DOCKRA_RESERVED_CPU: ${DOCKRA_RESERVED_CPU:-1}
+      DOCKRA_RESERVED_MEMORY_MB: ${DOCKRA_RESERVED_MEMORY_MB:-2048}
+      DOCKRA_RESERVED_DISK_GB: ${DOCKRA_RESERVED_DISK_GB:-20}
+      DOCKRA_DATA_ROOT: /var/lib/dockra
+      DOCKRA_APT_MIRROR: ${DOCKRA_APT_MIRROR:-}
+      DOCKRA_PIP_INDEX_URL: ${DOCKRA_PIP_INDEX_URL:-}
+      DOCKRA_PIP_EXTRA_INDEX_URL: ${DOCKRA_PIP_EXTRA_INDEX_URL:-}
+      DOCKRA_PIP_FALLBACK_MIRROR: ${DOCKRA_PIP_FALLBACK_MIRROR:-}
+      DOCKRA_NPM_REGISTRY: ${DOCKRA_NPM_REGISTRY:-}
+      DOCKRA_ENCRYPTION_KEY: ${DOCKRA_ENCRYPTION_KEY:-}
+      DOCKRA_TELEGRAM_BOT_TOKEN: ${DOCKRA_TELEGRAM_BOT_TOKEN:-}
+      DOCKRA_TELEGRAM_CHAT_ID: ${DOCKRA_TELEGRAM_CHAT_ID:-}
+      DOCKRA_TELEGRAM_API: ${DOCKRA_TELEGRAM_API:-https://api.telegram.org}
+      DOCKRA_NOTIFY_WEBHOOK: ${DOCKRA_NOTIFY_WEBHOOK:-}
+      DOCKRA_AUTO_BACKUP_HOURS: ${DOCKRA_AUTO_BACKUP_HOURS:-24}
+      DOCKRA_BACKUP_KEEP: ${DOCKRA_BACKUP_KEEP:-3}
+      DOCKRA_DISK_BACKUP_HOURS: ${DOCKRA_DISK_BACKUP_HOURS:-24}
+      DOCKRA_DISK_BACKUP_KEEP: ${DOCKRA_DISK_BACKUP_KEEP:-3}
+      DOCKRA_S3_ENDPOINT: ${DOCKRA_S3_ENDPOINT:-}
+      DOCKRA_S3_BUCKET: ${DOCKRA_S3_BUCKET:-}
+      DOCKRA_S3_ACCESS_KEY: ${DOCKRA_S3_ACCESS_KEY:-}
+      DOCKRA_S3_SECRET_KEY: ${DOCKRA_S3_SECRET_KEY:-}
+      DOCKRA_S3_REGION: ${DOCKRA_S3_REGION:-us-east-1}
+      DOCKRA_S3_PREFIX: ${DOCKRA_S3_PREFIX:-dockra}
+      DOCKRA_ALERT_PERCENT: ${DOCKRA_ALERT_PERCENT:-90}
+      DOCKRA_LOG_DAYS: ${DOCKRA_LOG_DAYS:-14}
+      DOCKRA_TLS_RESOLVER: ${DOCKRA_TLS_RESOLVER-le}
+      DOCKRA_APPS_DOMAIN: ${DOCKRA_APPS_DOMAIN:-}
+      DOCKRA_BUILD_CACHE_HOURS: ${DOCKRA_BUILD_CACHE_HOURS:-720}
+    volumes: &worker_volumes
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/dockra:/var/lib/dockra:rslave
+      - /proc:/host/proc:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+    cpu_shares: 2560
+    oom_score_adj: -900
+    networks:
+      - dockra
+
+  # build queue: image builds and rollbacks. The build itself runs in the Docker daemon; this only prepares files.
+  builder:
+    # One image for api, worker, builder and terminal; it is also the disk tool image (DOCKRA_TOOLS_IMAGE).
+    image: dockra-api
+    restart: unless-stopped
+    # Every .env setting reaches the container; the environment block below only sets constants or derived values.
+    env_file:
+      - path: .env
+        required: false
+    build:
+      context: ../api
+      args:
+        APT_MIRROR: ${DOCKRA_APT_MIRROR:-}
+        PIP_MIRROR: ${DOCKRA_PIP_INDEX_URL:-}
+    command: sh -c "python manage.py migrate && exec python manage.py run_worker --queues build --no-cron"
+    environment: *worker_env
+    volumes: *worker_volumes
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      # Several builds at once for different apps; two builds of the same app never run together.
+      replicas: ${DOCKRA_BUILDERS:-1}
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 384M
+    cpu_shares: 1280
+    oom_score_adj: -900
+    networks:
+      - dockra
+
+  # Interactive terminal and database tunnels over WebSocket, separate from the API so long connections hold no threads.
+  terminal:
+    # One image for api, worker, builder and terminal; it is also the disk tool image (DOCKRA_TOOLS_IMAGE).
+    image: dockra-api
+    restart: unless-stopped
+    # Every .env setting reaches the container; the environment block below only sets constants or derived values.
+    env_file:
+      - path: .env
+        required: false
+    build:
+      context: ../api
+      args:
+        APT_MIRROR: ${DOCKRA_APT_MIRROR:-}
+        PIP_MIRROR: ${DOCKRA_PIP_INDEX_URL:-}
+    # Console, live logs and disk preparation for the API also go through this service (rpc queue).
+    command: python manage.py run_terminal --port 8001
+    environment: *worker_env
+    volumes: *worker_volumes
+    ports:
+      - "${API_BIND:-0.0.0.0}:8001:8001"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dockra-ws.rule=(Host(`${API_DOMAIN}`) || Host(`api.dockra.local`)) && PathPrefix(`/ws`)
+      - traefik.http.routers.dockra-ws.entrypoints=web
+      - traefik.http.routers.dockra-ws.priority=100
+      - traefik.http.routers.dockra-ws.service=dockra-ws
+      - traefik.http.routers.dockra-ws-s.rule=Host(`${API_DOMAIN}`) && PathPrefix(`/ws`)
+      - traefik.http.routers.dockra-ws-s.entrypoints=websecure
+      - traefik.http.routers.dockra-ws-s.priority=100
+      - traefik.http.routers.dockra-ws-s.tls=true
+      - traefik.http.routers.dockra-ws-s.tls.certresolver=${DOCKRA_TLS_RESOLVER-le}
+      - traefik.http.routers.dockra-ws-s.service=dockra-ws
+      - traefik.http.routers.dockra-ws-s.middlewares=dockra-ws-sec
+      - traefik.http.middlewares.dockra-ws-sec.headers.stsSeconds=${DOCKRA_HSTS_SECONDS:-0}
+      - traefik.http.middlewares.dockra-ws-sec.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.dockra-ws-sec.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.services.dockra-ws.loadbalancer.server.port=8001
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 192M
+    cpu_shares: 1280
+    oom_score_adj: -900
+    networks:
+      - dockra
+
+  web:
+    restart: unless-stopped
+    build:
+      context: ../web
+      args:
+        NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL}
+        NPM_REGISTRY: ${DOCKRA_NPM_REGISTRY:-}
+        # Panel CSP: other origins the panel connects to (e.g. a terminal on a separate domain)
+        NEXT_PUBLIC_EXTRA_CONNECT_SRC: ${DOCKRA_PANEL_CONNECT_SRC:-}
+    ports:
+      - "${PANEL_BIND:-0.0.0.0}:3000:3000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dockra-panel.rule=Host(`${PANEL_DOMAIN}`) || Host(`panel.dockra.local`)
+      - traefik.http.routers.dockra-panel.entrypoints=web
+      - traefik.http.routers.dockra-panel.service=dockra-panel
+      - traefik.http.routers.dockra-panel-s.rule=Host(`${PANEL_DOMAIN}`)
+      - traefik.http.routers.dockra-panel-s.entrypoints=websecure
+      - traefik.http.routers.dockra-panel-s.tls=true
+      - traefik.http.routers.dockra-panel-s.tls.certresolver=${DOCKRA_TLS_RESOLVER-le}
+      - traefik.http.routers.dockra-panel-s.service=dockra-panel
+      - traefik.http.routers.dockra-panel-s.middlewares=dockra-panel-sec
+      - traefik.http.middlewares.dockra-panel-sec.headers.stsSeconds=${DOCKRA_HSTS_SECONDS:-0}
+      - traefik.http.middlewares.dockra-panel-sec.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.dockra-panel-sec.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.services.dockra-panel.loadbalancer.server.port=3000
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+    cpu_shares: 1280
+    oom_score_adj: -900
+    networks:
+      - dockra
+
+networks:
+  dockra:
+    name: dockra
+
+volumes:
+  pgdata:
+  traefik-certs:

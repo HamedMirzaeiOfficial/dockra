@@ -1,0 +1,46 @@
+# For a host where another service already owns port 80. Traefik does not touch 80 or 443.
+services:
+  traefik:
+    ports: !override
+      - "8080:80"
+      - "8443:443"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 64M
+
+  db:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 192M
+
+  api:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 768M
+
+  worker:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: 192M
+
+  builder:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30"
+          memory: 256M
+
+  web:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 128M

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dockra"
+dynamic = ["version"]
+description = "Dockra command line"
+requires-python = ">=3.10"
+
+[project.scripts]
+dockra = "dockra:cli"
+
+[tool.setuptools]
+py-modules = ["dockra"]
+
+[tool.setuptools.dynamic]
+version = { attr = "dockra.__version__" }

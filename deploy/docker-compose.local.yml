@@ -1,0 +1,30 @@
+# A real Docker run on Docker Desktop. Traefik listens on 8088 and the API on 8000; run the panel with next dev on 3000.
+# docker compose -p sdlocal --env-file .env.local -f docker-compose.yml -f docker-compose.local.yml up -d --build traefik db api worker builder terminal
+services:
+  traefik:
+    image: traefik:v3.6
+    ports: !override
+      - "8088:80"
+      - "8448:443"
+
+  api:
+    command: sh -c "python manage.py migrate && python manage.py seed && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --worker-class gthread --workers 3 --threads 8 --timeout 7200 --graceful-timeout 7200"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+
+  worker:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  builder:
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
