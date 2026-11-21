@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     # Picks the response language from Accept-Language (the panel sends its own language).
     "django.middleware.locale.LocaleMiddleware",
@@ -106,6 +107,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "media/"
 DOCKRA_DATA_ROOT = os.environ.get("DOCKRA_DATA_ROOT", "")
 if DOCKRA_DATA_ROOT:

@@ -111,6 +111,8 @@ python manage.py seed_demo                 # admin / dockra + sample apps, datab
 python manage.py runserver 127.0.0.1:8000
 ```
 
+> `seed_demo` creates panel-only sample data. Its sample apps and domains use the `fake` driver and have no real containers behind them, so their website links do not serve a site. To run a real site, enable the `docker` driver and deploy a project through the CLI or panel.
+
 In a second terminal:
 
 ```bash

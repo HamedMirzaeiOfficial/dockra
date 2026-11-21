@@ -22,6 +22,8 @@ python manage.py runserver 127.0.0.1:8000
 
 `seed` creates only the organization and the admin user; `seed_demo` creates realistic sample data **through the public API** and refuses to run unless `DOCKRA_DRIVER=fake`.
 
+> Note: apps and domains created by `seed_demo` are for display only. Because the `fake` driver creates no real image or container, links such as `docs-site.127.0.0.1.sslip.io` do not serve a website. To run a real site, enable `DOCKRA_DRIVER=docker` and deploy a project through the CLI or panel.
+
 Dashboard:
 
 ```bash
