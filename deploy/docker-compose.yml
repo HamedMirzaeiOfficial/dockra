@@ -82,7 +82,7 @@ services:
         APT_MIRROR: ${DOCKRA_APT_MIRROR:-}
         PIP_MIRROR: ${DOCKRA_PIP_INDEX_URL:-}
     # gthread: a large upload or a live log occupies one thread, not the whole API.
-    command: sh -c "python manage.py migrate && python manage.py seed && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --worker-class gthread --workers 3 --threads 8 --timeout 7200 --graceful-timeout 60"
+    command: sh -c "python manage.py migrate && python manage.py seed && python manage.py collectstatic --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --worker-class gthread --workers 3 --threads 8 --timeout 7200 --graceful-timeout 60"
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DEBUG: "0"
