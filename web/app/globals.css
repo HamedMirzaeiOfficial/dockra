@@ -74,6 +74,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Vazirmatn is the primary UI face in Persian. Keep Inter for the English UI,
+ * while preserving a consistent, readable Arabic/Persian shape in mixed text. */
+html[lang="fa"] body,
+html[lang="fa"] button,
+html[lang="fa"] input,
+html[lang="fa"] select,
+html[lang="fa"] textarea {
+  font-family: var(--font-fa), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "kern", "liga", "calt";
+}
+
 ::selection {
   background: rgb(var(--accent) / 0.35);
   color: rgb(var(--fg));
